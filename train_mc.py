@@ -55,9 +55,8 @@ def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
         # Assuming 4 actions (up, down, left, right)
         n_actions = 4  
         
-         # Initialize agent with proper params
+        # Initialize agent
         agent = McOnPolicyAgent(n_actions=n_actions, gamma=0.9, epsilon=0.1, max_episode_length=100)
-        
         
         for _ in trange(iters):
             state = env.reset()
@@ -68,10 +67,11 @@ def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
                 action = agent.take_action(state)
 
                 state, reward, terminated, info = env.step(action)
-                print(terminated)
                 episode_len += 1 
+
                 if terminated:
                     break
+                
                 agent.update(state, reward, info["actual_action"])
             agent.end_episode()
 

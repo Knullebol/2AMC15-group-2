@@ -13,14 +13,6 @@ class McOnPolicyAgent(BaseAgent):
     It updates the value function based on the returns from episodes.
     """
     def __init__(self, n_actions: int, gamma: int, epsilon: int, max_episode_length: int):
-        """
-        Initialize the agent.
-
-        Args:
-            env: The environment in which the agent operates.
-            policy: The policy used by the agent.
-            discount_factor: The discount factor for future rewards.
-        """
         super().__init__()
 
         self.n_actions = n_actions
@@ -35,7 +27,9 @@ class McOnPolicyAgent(BaseAgent):
         self.episode = []  # stores (state, action, reward) for current episode
 
     def take_action(self, state: tuple[int, int]) -> int:
-        """Selects action using ε-greedy policy."""
+        """
+        Selects action using ε-greedy policy.
+        """
         if random.random() < self.epsilon:
             return random.randint(0, self.n_actions - 1)
         else:
@@ -46,7 +40,9 @@ class McOnPolicyAgent(BaseAgent):
         self.episode.append((state, action, reward))
 
     def end_episode(self):
-        """Performs the Monte Carlo policy update at end of episode."""
+        """
+        Performs the Monte Carlo policy update at end of episode.
+        """
         G = 0
         visited = set()
         for t in reversed(range(len(self.episode))):
