@@ -94,6 +94,9 @@ class Environment:
             self.target_spf = 1. / target_fps
         self.gui = None
 
+    def getGrid(self):
+        return self.grid
+    
     def _reset_info(self) -> dict:
         """Resets the info dictionary.
 

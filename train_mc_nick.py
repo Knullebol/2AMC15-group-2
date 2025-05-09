@@ -49,31 +49,66 @@ def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
         
         # Set up the environment
         env = Environment(grid, no_gui,sigma=sigma, target_fps=fps, 
-                          random_seed=random_seed, agent_start_pos=(1,13))
+                          random_seed=random_seed)
 
         state = env.reset()
         ACTIONS = 4
+        DISCOUNT = 1
         # Initialize agent
         agent = MonteCarloAgent(env.grid.shape[0], env.grid.shape[1], no_actions=ACTIONS)
-        
         # Always reset the environment to initial state
         state = env.reset()
+        state_action_rewards = {}
         for _ in trange(iters):
+
+            state = env.reset()
+            episode_states = []
+            episode_actions = []
+            episode_rewards = []
             
-            # Agent takes an action based on the latest observation and info.
-            action = agent.take_action(state)
-
-            # The action is performed in the environment
-            state, reward, terminated, info = env.step(action)
+            terminated = False
+            episode_iters = 0
             
-            # If the final state is reached, stop.
-            if terminated:
-                break
+            #Simulate full episode
+            while not terminated and episode_iters < 5_000:
 
-            agent.update(state, reward, info["actual_action"])
+                episode_states.append(state)
+                action = agent.take_action(state)
+                state, reward, terminated, info = env.step(action)
 
+                episode_actions.append(info["actual_action"])
+                episode_rewards.append(reward)
+                episode_iters += 1
+                
+            visited = []
+            G = 0
+            #Iterate over episode in reverse
+            for t in reversed(range(len(episode_states))):
+                currState = episode_states[t]
+                currAction = episode_actions[t]
+                currReward = episode_rewards[t]
+                
+                G = G*DISCOUNT + currReward
+                
+                state_action_pair = (currState, currAction)
+                
+                #Mark the last occurrence of (state,action) pair and note its discounted reward.
+                if state_action_pair not in visited:
+                    visited.append(state_action_pair)
+                    if state_action_pair not in state_action_rewards:
+                        state_action_rewards[state_action_pair] = []
+                    state_action_rewards[state_action_pair].append(G)
+                else:
+                    state_action_rewards[state_action_pair][-1] = G
+            #At the end of every episode, update the agent using the average of
+            # all discounted rewards accumulated thus far.
+            agent.update(state_action_rewards)
+
+        #Simulate final run with only-optimal-moves policy (Epsilon = 0)
+        state = env.reset()
+        agent.epsilon = 0
         # Evaluate the agent
-        Environment.evaluate_agent(grid, agent, iters, sigma, random_seed=random_seed, agent_start_pos=(1,13))
+        Environment.evaluate_agent(grid, agent, iters, sigma, random_seed=random_seed)
 
 
 if __name__ == '__main__':
