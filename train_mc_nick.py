@@ -55,11 +55,16 @@ def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
         ACTIONS = 4
         DISCOUNT = 1
         # Initialize agent
-        agent = MonteCarloAgent(env.grid.shape[0], env.grid.shape[1], no_actions=ACTIONS)
+        agent = MonteCarloAgent(env.grid.shape[0], env.grid.shape[1], no_actions=ACTIONS, epsilon=0.9)
         # Always reset the environment to initial state
         state = env.reset()
         state_action_rewards = {}
-        for _ in trange(iters):
+        for episode in trange(iters):
+
+            #Decaying-Epsilon. Encourages exploration with a high epsilon during the first half
+            # of our iterations, and decays it afterwards to enforce exploitation for finding an optimal path.
+            if (episode > iters*0.5):
+                agent.epsilon = agent.starting_epsilon / (episode - iters*0.5)
 
             state = env.reset()
             episode_states = []
