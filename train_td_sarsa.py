@@ -56,22 +56,29 @@ def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
         
         # Always reset the environment to initial state
         state = env.reset()
+
+        # Since it is on policy, choose the first action now
+        action = agent.take_action(state)
+
         for _ in trange(iters):
             
-            # Agent takes an action based on the latest observation and info.
-            action = agent.take_action(state)
-
-            # The action is performed in the environment
+            # Take the chosen action
             next_state, reward, terminated, info = env.step(action)
-            actual_action = info.get("actual_action", action)            
 
-            agent.update(next_state, reward, actual_action)
+            # Choose the next action
+            next_action = agent.take_action(next_state)
 
+            # Update SARSA with the next action and state
+            agent.update(next_state, reward, next_action) 
+
+            # Go to next state and action
             state = next_state
+            action = next_action        
 
-            # If terminal, reset
+            # If terminal, reset (new state and action)
             if terminated:
                 state = env.reset()
+                action = agent.take_action(state)
 
         # Evaluate the agent
         Environment.evaluate_agent(grid, agent, iters, sigma, random_seed=random_seed) #, agent_start_pos=(1,13))
