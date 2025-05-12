@@ -9,7 +9,7 @@ from tqdm import trange
 try:
     from world import Environment
     from agents.random_agent import RandomAgent
-    from agents.mc_agent import MonteCarloAgent
+    from agents.old_mc_agents.mc_agent import MonteCarloAgent
 except ModuleNotFoundError:
     from os import path
     from os import pardir

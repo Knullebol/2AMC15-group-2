@@ -1,15 +1,15 @@
-"""
-Train your RL Agent in this file. 
-"""
+# train_mc_hybrid.py
 
 from argparse import ArgumentParser
 from pathlib import Path
 from tqdm import trange
+from world import Environment
+from agents.mc_agent_merged import MonteCarloOnPolicyAgent
 
 try:
     from world import Environment
     # from agents.random_agent import RandomAgent
-    from agents.mc_on_policy_agent import McOnPolicyAgent
+    from agents.mc_agent_merged import MonteCarloOnPolicyAgent
 except ModuleNotFoundError:
     from os import path
     from os import pardir
@@ -21,7 +21,7 @@ except ModuleNotFoundError:
         sys.path.extend(root_path)
     from world import Environment
     # from agents.random_agent import RandomAgent
-    from agents.mc_on_policy_agent import McOnPolicyAgent
+    from agents.mc_agent_merged import MonteCarloOnPolicyAgent
 
 def parse_args():
     p = ArgumentParser(description="DIC Reinforcement Learning Trainer.")
@@ -44,39 +44,46 @@ def parse_args():
 
 def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
          sigma: float, random_seed: int):
-    """Main loop of the program."""
+    """
+    Main loop of the program.
+    """
+
+    # Assuming 4 actions (up, down, left, right)
+    n_actions = 4  
 
     for grid in grid_paths:
-        
         # Set up the environment
-        env = Environment(grid, no_gui,sigma=sigma, target_fps=fps, 
-                          random_seed=random_seed)
-        
-        # Assuming 4 actions (up, down, left, right)
-        n_actions = 4  
-        
+        env = Environment(grid, no_gui, sigma=sigma, target_fps=fps, random_seed=random_seed, agent_start_pos=(1,13))
         # Initialize agent
-        agent = McOnPolicyAgent(n_actions=n_actions, gamma=0.9, epsilon=0.1, max_episode_length=100)
-        
-        for _ in trange(iters):
+        agent = MonteCarloOnPolicyAgent(n_actions=n_actions, gamma=0.9, epsilon=0.5)
+
+        for episode in trange(iters):
             state = env.reset()
-            episode_len = 0
+            terminated = False
+            steps = 0
+            max_steps = 1000
 
-            while episode_len < agent.max_episode_length:
-
+            while not terminated and steps < max_steps:
+                # Agent takes an action based on the latest observation and info.
                 action = agent.take_action(state)
 
-                state, reward, terminated, info = env.step(action)
-                episode_len += 1 
+                # The action is performed in the environment
+                next_state, reward, terminated, info = env.step(action)
 
                 if terminated:
                     break
-                
-                agent.update(state, reward, info["actual_action"])
-            agent.end_episode()
 
-        # Evaluation step (optional for MC agents, but required by assignment)
-        Environment.evaluate_agent(grid, agent, iters, sigma, random_seed=random_seed)
+                agent.update(state, reward, info["actual_action"])
+                state = next_state
+                steps += 1
+
+            agent.end_episode()
+        
+        #Simulate final run with only-optimal-moves policy (Epsilon = 0)
+        agent.epsilon = 0
+        state = env.reset()
+        # Evaluate the agent
+        Environment.evaluate_agent(grid, agent, iters, sigma, random_seed=random_seed, agent_start_pos=(1,13))
 
 if __name__ == '__main__':
     args = parse_args()
