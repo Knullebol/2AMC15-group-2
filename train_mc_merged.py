@@ -53,7 +53,7 @@ def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
 
     for grid in grid_paths:
         # Set up the environment
-        env = Environment(grid, no_gui, sigma=sigma, target_fps=fps, random_seed=random_seed)
+        env = Environment(grid, no_gui, sigma=sigma, target_fps=fps, random_seed=random_seed, agent_start_pos=(1,13))
         # Initialize agent
         agent = MonteCarloOnPolicyAgent(n_actions=n_actions, gamma=0.9, epsilon=0.5)
 
