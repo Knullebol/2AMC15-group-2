@@ -40,30 +40,29 @@ class DPAgent(BaseAgent):
         self.V[state] = value
         self.policy[state] = action
 
-    def _prepare_next_states(self, x, y):
+    def _get_next_state(self, x, y, action):
         """
         Get the next states (by default the adjacent 4 cells) for a given state.
         """
-        next_states = []
-        for action in self.actions:
-            direction = action_to_direction(action)
-            next_x = x + direction[0]
-            next_y = y + direction[1]
-            next_states.append((next_x, next_y))
-        return next_states
+        direction = action_to_direction(action)
+        next_x = x + direction[0]
+        next_y = y + direction[1]
+        if self.grid[next_x, next_y] in [1, 2]:
+            next_x, next_y = x, y
+        return next_x, next_y
     
-    def _expected_value_of_action(self, action, next_states):
+    def _expected_value_of_action(self, x, y, actual_action):
         """
         Calculate expected value for a given action.
         """
         # The action taken has a probability of 1 - sigma, while the other actions have a probability of sigma / 3
         probs = [self.sigma / 3 for _ in range(len(self.actions))]
-        probs[action] = 1 - self.sigma
+        probs[actual_action] = 1 - self.sigma
         q = 0
-        for i, next_state in enumerate(next_states):
-            reward = self.env.reward_fn(self.grid, next_state)
-            # sum_{s', r} P(s', r | s, a) * (r + γV[s'])
-            q += probs[i] * (reward + self.gamma * self.V[next_state])
+        for actual_action in self.actions:
+            next_x, next_y = self._get_next_state(x, y, actual_action)
+            reward = self.env.reward_fn(self.grid, (next_x, next_y))
+            q += probs[actual_action] * (reward + self.gamma * self.V[next_x, next_y])
         return q
     
     def value_iteration(self):
@@ -75,13 +74,13 @@ class DPAgent(BaseAgent):
             for y in range(self.grid.shape[1]):
                 if self.grid[x, y] in [1, 2]:
                     self.V[x, y] = -100  # Penalty for wall or obstacle
+                    self.policy[x, y] = -1
                     continue
                 
                 action_values = np.zeros(4)
-                next_states = self._prepare_next_states(x, y)
 
                 for action in self.actions:
-                    action_values[action] = self._expected_value_of_action(action, next_states)
+                    action_values[action] = self._expected_value_of_action(x, y, action)
 
                 self.update((x, y), np.max(action_values), np.argmax(action_values))
                     

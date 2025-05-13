@@ -31,6 +31,8 @@ def parse_args():
                    help="Disables rendering to train faster")
     p.add_argument("--sigma", type=float, default=0.1,
                    help="Sigma value for the stochasticity of the environment.")
+    p.add_argument("--gamma", type=float, default=0.9,
+                   help="Discount factor.")
     p.add_argument("--fps", type=int, default=30,
                    help="Frames per second to render at. Only used if "
                         "no_gui is not set.")
@@ -56,7 +58,7 @@ def train_agent(agent, v_iter=3000, print_cell_value=False):
     
 
 def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
-         sigma: float, random_seed: int):
+         sigma: float, gamma: float, random_seed: int):
     """Main loop of the program."""
 
     for grid in grid_paths:
@@ -66,7 +68,7 @@ def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
                           random_seed=random_seed)
         
         # Initialize agent
-        agent = DPAgent(env, fp=grid, discount=0.9)
+        agent = DPAgent(env, fp=grid, discount=gamma)
         
         # Always reset the environment to initial state
         state = env.reset()
@@ -79,4 +81,4 @@ def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
 
 if __name__ == '__main__':
     args = parse_args()
-    main(args.GRID, args.no_gui, args.iter, args.fps, args.sigma, args.random_seed)
+    main(args.GRID, args.no_gui, args.iter, args.fps, args.sigma, args.gamma, args.random_seed)
