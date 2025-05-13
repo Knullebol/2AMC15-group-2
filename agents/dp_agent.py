@@ -30,6 +30,7 @@ class DPAgent(BaseAgent):
 
         # Store updates
         self.V = np.zeros(self.grid.shape)      # Value function
+        self.V_old = np.zeros(self.grid.shape)  # Previous value function
         self.policy = np.zeros(self.grid.shape) # Policy
 
     def update(self, state: tuple[int, int], value: float, action):
@@ -69,6 +70,7 @@ class DPAgent(BaseAgent):
         """
         One iteration of Value iteration algorithm to update the value function and policy.
         """
+        self.V_old = np.copy(self.V)
         for x in range(self.grid.shape[0]):  # Iterate over cells
             for y in range(self.grid.shape[1]):
                 if self.grid[x, y] in [1, 2]:
@@ -82,6 +84,7 @@ class DPAgent(BaseAgent):
                     action_values[action] = self._expected_value_of_action(action, next_states)
 
                 self.update((x, y), np.max(action_values), np.argmax(action_values))
+                    
 
     def take_action(self, state: tuple[int, int]) -> int:
         """

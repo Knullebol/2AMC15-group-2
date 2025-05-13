@@ -46,6 +46,9 @@ def train_agent(agent, v_iter=3000, print_cell_value=False):
     print("\nTraining agent with value iteration.\n")
     for _ in trange(v_iter):
         agent.value_iteration()
+        if np.allclose(agent.V, agent.V_old, atol=1e-5):
+            print(f'Converged after {_ + 1} iterations.')
+            break
         if _ == v_iter - 1 and print_cell_value:
             print('\n',agent.V.T)
             print(agent.policy.T)
@@ -70,7 +73,8 @@ def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
         agent = train_agent(agent, v_iter=1000, print_cell_value=False)
 
         # Evaluate the agent
-        Environment.evaluate_agent(grid, agent, iters, sigma, agent_start_pos=(3,11), random_seed=random_seed)
+        start = (3, 11) if 'A1' in str(grid) else None
+        Environment.evaluate_agent(grid, agent, iters, sigma, agent_start_pos=start, random_seed=random_seed)
 
 
 if __name__ == '__main__':
