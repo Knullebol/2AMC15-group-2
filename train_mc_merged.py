@@ -55,7 +55,7 @@ def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
         # Set up the environment
         env = Environment(grid, no_gui, sigma=sigma, target_fps=fps, random_seed=random_seed, agent_start_pos=(1,13))
         # Initialize agent
-        agent = MonteCarloOnPolicyAgent(n_actions=n_actions, gamma=0.9, epsilon=0.5)
+        agent = MonteCarloOnPolicyAgent(n_actions=n_actions, gamma=1, epsilon=0.9)
 
         for episode in trange(iters):
             state = env.reset()
@@ -78,6 +78,8 @@ def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
                 steps += 1
 
             agent.end_episode()
+            if episode > iters*0.5:
+                agent.epsilon = agent.starting_epsilon / (episode - iters*0.5)
         
         #Simulate final run with only-optimal-moves policy (Epsilon = 0)
         agent.epsilon = 0

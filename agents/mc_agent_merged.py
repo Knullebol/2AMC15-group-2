@@ -5,13 +5,12 @@ from agents.base_agent import BaseAgent
 
 
 class MonteCarloOnPolicyAgent(BaseAgent):
-    def __init__(self, n_actions, gamma=0.9, epsilon=0.5, eps_min=0.01, eps_decay=0.995):
+    def __init__(self, n_actions, gamma=0.9, epsilon=0.9):
         super().__init__()
         self.n_actions = n_actions
         self.gamma = gamma
         self.epsilon = epsilon
-        self.eps_min = eps_min
-        self.eps_decay = eps_decay
+        self.starting_epsilon = epsilon
 
         self.Q = defaultdict(lambda: np.zeros(n_actions))
         self.returns = defaultdict(list)
@@ -44,8 +43,11 @@ class MonteCarloOnPolicyAgent(BaseAgent):
             G = self.gamma * G + r
             if (s,a) not in visited:
                 self.returns[(s,a)].append(G)
-                self.Q[s][a] = np.mean(self.returns[(s,a)])
                 visited.add((s,a))
+            else:
+                self.returns[(s,a)][-1] = G
+                
+        for s,a in self.returns.keys():
+            self.Q[s][a] = np.mean(self.returns[(s,a)])
+        
         self.episode.clear()
-        # decaying epsilon
-        self.epsilon = max(self.epsilon * self.eps_decay, self.eps_min)
