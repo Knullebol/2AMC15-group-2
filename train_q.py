@@ -34,17 +34,24 @@ def parse_args():
                    help="Total training *steps* (not episodes).")
     p.add_argument("--random_seed", type=int, default=0,
                    help="Random seed for reproducibility.")
+    p.add_argument("--epsilon", type=float, default=0.1,
+                   help="Epsilon for epsilon-greedy action selection.")
+    p.add_argument("--alpha", type=float, default=0.1,
+                   help="Learning rate for Q-learning.")
+    p.add_argument("--gamma", type=float, default=0.99,
+                   help="Discount factor for Q-learning.")
     return p.parse_args()
 
 
 def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
-         sigma: float, random_seed: int):
+         sigma: float, random_seed: int, epsilon: float, alpha: float, gamma: float):
     """Main loop of the program."""
     for grid in grid_paths:
 
-        env = Environment(grid, no_gui=no_gui, sigma=sigma, target_fps=fps, random_seed=random_seed)
+        env = Environment(grid, no_gui=no_gui, sigma=sigma, target_fps=fps, random_seed=random_seed,
+                          agent_start_pos=(3, 11))
 
-        agent = QLearningAgent(num_actions=4, alpha=0.1, gamma=0.99, epsilon=0.1)
+        agent = QLearningAgent(num_actions=4, alpha=alpha, gamma=gamma, epsilon=epsilon)
 
         state = env.reset()
         for step in trange(iters, desc=f"Training on {grid.name}"):
@@ -68,4 +75,5 @@ def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
 
 if __name__ == '__main__':
     args = parse_args()
-    main(args.GRID, args.no_gui, args.iter, args.fps, args.sigma, args.random_seed)
+    main(args.GRID, args.no_gui, args.iter, args.fps, args.sigma,
+         args.random_seed, args.epsilon, args.alpha, args.gamma)
