@@ -32,7 +32,20 @@ class DPAgent(BaseAgent):
         self.V = np.zeros(self.grid.shape)      # Value function
         self.V_old = np.zeros(self.grid.shape)  # Previous value function
         self.policy = np.zeros(self.grid.shape) # Policy
+        self.recorded_values = []               # Store values for plotting
+        self.first_cell = self._first_available_cell()
+        self.recorded_states = []               # Store states for plotting
 
+    def _first_available_cell(self):
+        """
+        Get the first available cell in the grid.
+        """
+        for x in range(self.grid.shape[0]):
+            for y in range(self.grid.shape[1]):
+                if self.grid[x, y] == 0:
+                    return (x, y)
+        return None
+    
     def update(self, state: tuple[int, int], value: float, action):
         """
         Update the value function and policy for the given state.
@@ -69,6 +82,7 @@ class DPAgent(BaseAgent):
         """
         One iteration of Value iteration algorithm to update the value function and policy.
         """
+        
         self.V_old = np.copy(self.V)
         for x in range(self.grid.shape[0]):  # Iterate over cells
             for y in range(self.grid.shape[1]):
@@ -83,6 +97,9 @@ class DPAgent(BaseAgent):
                     action_values[action] = self._expected_value_of_action(x, y, action)
 
                 self.update((x, y), np.max(action_values), np.argmax(action_values))
+        
+        # Record the value of the first available cell
+        self.recorded_values.append(self.V[self.first_cell])
                     
 
     def take_action(self, state: tuple[int, int]) -> int:
