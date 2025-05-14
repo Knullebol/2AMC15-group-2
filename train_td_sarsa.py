@@ -8,7 +8,7 @@ from tqdm import trange
 
 try:
     from world import Environment
-    from agents.old_mc_agents.mc_agent import MonteCarloAgent
+    from agents.td_sarsa_agent import TDSarsaAgent
 except ModuleNotFoundError:
     from os import path
     from os import pardir
@@ -19,6 +19,7 @@ except ModuleNotFoundError:
     if root_path not in sys.path:
         sys.path.extend(root_path)
     from world import Environment
+    from agents.td_sarsa_agent import TDSarsaAgent
 
 def parse_args():
     p = ArgumentParser(description="DIC Reinforcement Learning Trainer.")
@@ -42,36 +43,45 @@ def parse_args():
 def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
          sigma: float, random_seed: int):
     """Main loop of the program."""
-
     for grid in grid_paths:
         
         # Set up the environment
         env = Environment(grid, no_gui,sigma=sigma, target_fps=fps, 
-                          random_seed=random_seed, agent_start_pos=(1,13))
+                          random_seed=random_seed) #, agent_start_pos=(1,13))
 
         state = env.reset()
         ACTIONS = 4
         # Initialize agent
-        agent = MonteCarloAgent(env.grid.shape[0], env.grid.shape[1], no_actions=ACTIONS)
+        agent = TDSarsaAgent(num_actions = ACTIONS)
         
         # Always reset the environment to initial state
         state = env.reset()
+
+        # Since it is on policy, choose the first action now
+        action = agent.take_action(state)
+
         for _ in trange(iters):
             
-            # Agent takes an action based on the latest observation and info.
-            action = agent.take_action(state)
+            # Take the chosen action
+            next_state, reward, terminated, info = env.step(action)
 
-            # The action is performed in the environment
-            state, reward, terminated, info = env.step(action)
-            
-            # If the final state is reached, stop.
+            # Choose the next action
+            next_action = agent.take_action(next_state)
+
+            # Update SARSA with the next action and state
+            agent.update(next_state, reward, next_action) 
+
+            # Go to next state and action
+            state = next_state
+            action = next_action        
+
+            # If terminal, reset (new state and action)
             if terminated:
-                break
-
-            agent.update(state, reward, info["actual_action"])
+                state = env.reset()
+                action = agent.take_action(state)
 
         # Evaluate the agent
-        Environment.evaluate_agent(grid, agent, iters, sigma, random_seed=random_seed, agent_start_pos=(1,13))
+        Environment.evaluate_agent(grid, agent, iters, sigma, random_seed=random_seed) #, agent_start_pos=(1,13))
 
 
 if __name__ == '__main__':

@@ -1,14 +1,15 @@
-"""
-Train your RL Agent in this file. 
-"""
+# train_mc_hybrid.py
 
 from argparse import ArgumentParser
 from pathlib import Path
 from tqdm import trange
+from world import Environment
+from agents.mc_agent_merged import MonteCarloOnPolicyAgent
 
 try:
     from world import Environment
-    from agents.old_mc_agents.mc_agent import MonteCarloAgent
+    # from agents.random_agent import RandomAgent
+    from agents.mc_agent_merged import MonteCarloOnPolicyAgent
 except ModuleNotFoundError:
     from os import path
     from os import pardir
@@ -19,6 +20,8 @@ except ModuleNotFoundError:
     if root_path not in sys.path:
         sys.path.extend(root_path)
     from world import Environment
+    # from agents.random_agent import RandomAgent
+    from agents.mc_agent_merged import MonteCarloOnPolicyAgent
 
 def parse_args():
     p = ArgumentParser(description="DIC Reinforcement Learning Trainer.")
@@ -41,38 +44,48 @@ def parse_args():
 
 def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
          sigma: float, random_seed: int):
-    """Main loop of the program."""
+    """
+    Main loop of the program.
+    """
+
+    # Assuming 4 actions (up, down, left, right)
+    n_actions = 4  
 
     for grid in grid_paths:
-        
         # Set up the environment
-        env = Environment(grid, no_gui,sigma=sigma, target_fps=fps, 
-                          random_seed=random_seed, agent_start_pos=(1,13))
-
-        state = env.reset()
-        ACTIONS = 4
+        env = Environment(grid, no_gui, sigma=sigma, target_fps=fps, random_seed=random_seed)
         # Initialize agent
-        agent = MonteCarloAgent(env.grid.shape[0], env.grid.shape[1], no_actions=ACTIONS)
+        agent = MonteCarloOnPolicyAgent(n_actions=n_actions, gamma=1, epsilon=0.9)
+
+        for episode in trange(iters):
+            state = env.reset()
+            terminated = False
+            steps = 0
+            max_steps = 1000
+
+            while not terminated and steps < max_steps:
+                # Agent takes an action based on the latest observation and info.
+                action = agent.take_action(state)
+
+                # The action is performed in the environment
+                next_state, reward, terminated, info = env.step(action)
+
+                if terminated:
+                    break
+
+                agent.update(state, reward, info["actual_action"])
+                state = next_state
+                steps += 1
+
+            agent.end_episode()
+            if episode > iters*0.5:
+                agent.epsilon = agent.starting_epsilon / (episode - iters*0.5)
         
-        # Always reset the environment to initial state
+        #Simulate final run with only-optimal-moves policy (Epsilon = 0)
+        agent.epsilon = 0
         state = env.reset()
-        for _ in trange(iters):
-            
-            # Agent takes an action based on the latest observation and info.
-            action = agent.take_action(state)
-
-            # The action is performed in the environment
-            state, reward, terminated, info = env.step(action)
-            
-            # If the final state is reached, stop.
-            if terminated:
-                break
-
-            agent.update(state, reward, info["actual_action"])
-
         # Evaluate the agent
-        Environment.evaluate_agent(grid, agent, iters, sigma, random_seed=random_seed, agent_start_pos=(1,13))
-
+        Environment.evaluate_agent(grid, agent, iters, sigma, random_seed=random_seed)
 
 if __name__ == '__main__':
     args = parse_args()

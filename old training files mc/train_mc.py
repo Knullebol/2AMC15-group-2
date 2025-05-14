@@ -9,7 +9,7 @@ from tqdm import trange
 try:
     from world import Environment
     # from agents.random_agent import RandomAgent
-    from agents.mc_on_policy_agent import McOnPolicyAgent
+    from agents.old_mc_agents.mc_on_policy_agent import McOnPolicyAgent
 except ModuleNotFoundError:
     from os import path
     from os import pardir
@@ -21,7 +21,7 @@ except ModuleNotFoundError:
         sys.path.extend(root_path)
     from world import Environment
     # from agents.random_agent import RandomAgent
-    from agents.mc_on_policy_agent import McOnPolicyAgent
+    from agents.old_mc_agents.mc_on_policy_agent import McOnPolicyAgent
 
 def parse_args():
     p = ArgumentParser(description="DIC Reinforcement Learning Trainer.")
@@ -44,7 +44,7 @@ def parse_args():
 
 def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
          sigma: float, random_seed: int):
-    """Main loop of the program."""
+   
 
     for grid in grid_paths:
         
