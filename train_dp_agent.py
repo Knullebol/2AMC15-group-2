@@ -79,6 +79,10 @@ def main(args):
         start_pos = None
         if 'A1' in str(grid_path):
             start_pos = (3, 11)
+        elif 'test' in str(grid_path):
+            start_pos = (1, 13)
+        elif 'large' in str(grid_path):
+            start_pos = (14, 18)
         
         # Evaluate the agent
         print("\nEvaluating agent performance...\n")

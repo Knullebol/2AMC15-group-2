@@ -68,14 +68,15 @@ class DPAgent(BaseAgent):
         """
         Calculate expected value for a given action.
         """
-        # The action taken has a probability of 1 - sigma, while the other actions have a probability of sigma / 3
-        probs = [self.sigma / 3 for _ in range(len(self.actions))]
-        probs[actual_action] = 1 - self.sigma
-        q = 0
-        for actual_action in self.actions:
-            next_x, next_y = self._get_next_state(x, y, actual_action)
+        q = 0.0
+        for action in self.actions:
+            if action == actual_action:
+                prob = 1.0 - self.sigma
+            else:
+                prob = self.sigma / 3.0
+            next_x, next_y = self._get_next_state(x, y, action)
             reward = self.env.reward_fn(self.grid, (next_x, next_y))
-            q += probs[actual_action] * (reward + self.gamma * self.V[next_x, next_y])
+            q += prob * (reward + self.gamma * self.V[next_x, next_y])
         return q
     
     def value_iteration(self):
@@ -87,11 +88,11 @@ class DPAgent(BaseAgent):
         for x in range(self.grid.shape[0]):  # Iterate over cells
             for y in range(self.grid.shape[1]):
                 if self.grid[x, y] in [1, 2]:
-                    self.V[x, y] = -100  # Penalty for wall or obstacle
+                    self.V[x, y] = -1000  # Penalty for wall or obstacle
                     self.policy[x, y] = -1
                     continue
                 
-                action_values = np.zeros(4)
+                action_values = np.zeros(len(self.actions))
 
                 for action in self.actions:
                     action_values[action] = self._expected_value_of_action(x, y, action)

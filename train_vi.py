@@ -66,13 +66,13 @@ def plot_values(agent, path=None, grid_name=None):
     """
     fig, ax = plt.subplots(figsize=(14, 14))
     ax.set_title("Value Function and Policy")
-
-    # Create a copy of the value grid
+    ax.title.set_fontsize(20)
+    
     value_grid = agent.V.copy()
 
     # Mask wall cells (set them to NaN)
-    value_grid[agent.grid == 1] = np.nan  # Assuming walls are marked as 1
-    value_grid[agent.grid == 2] = np.nan  # If there are other wall markers
+    value_grid[agent.grid == 1] = np.nan
+    value_grid[agent.grid == 2] = np.nan
 
     # Plot the heatmap
     cax = ax.matshow(value_grid.T, cmap=cm.viridis, interpolation='none',
@@ -111,9 +111,6 @@ def plot_values(agent, path=None, grid_name=None):
     ax.tick_params(which="major", size=0)  # Hide major ticks
     ax.grid(which="minor", color="white", linestyle='-', linewidth=0.5)
     ax.tick_params(which="minor", size=0)  # Hide minor ticks
-    
-
-    # Add title and save the plot
     plt.savefig(path + f"/value_function_{grid_name}.png")
     
 
@@ -148,7 +145,7 @@ def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
         agent = train_agent(agent, v_iter=1000, print_cell_value=False)
 
         # Plot the values
-        save_path = "D:/TUe/Quartile_4/Data Intelligence/figures"
+        save_path = "./figures"
         plot_values(agent, save_path, grid_name=grid.stem)
         plot_recorded_values(agent, save_path, grid_name=grid.stem)
         
@@ -159,7 +156,7 @@ def main(grid_paths: list[Path], no_gui: bool, iters: int, fps: int,
         elif 'test' in str(grid):
             start = (1, 13)
         elif 'large' in str(grid):
-            start = (1, 1)
+            start = (14, 18)
         Environment.evaluate_agent(grid, agent, iters, sigma, agent_start_pos=start, random_seed=random_seed)
 
 
