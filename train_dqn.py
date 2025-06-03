@@ -132,6 +132,8 @@ class DQNTrainingModel:
 
 
 if __name__ == '__main__':
+    # Run using:
+    # python "train_dqn.py" ".\grid_configs\test_grid.npy" --steps=1000 --episodes 100 --no_gui --sigma=0 --random_seed=0 --print_episodes
     args = parse_args()
 
     model = DQNTrainingModel()
