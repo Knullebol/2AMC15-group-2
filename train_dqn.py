@@ -27,6 +27,8 @@ def parse_args():
                    help="Number of steps per episode to go through.")
     p.add_argument("--random_seed", type=int, default=0,
                    help="Random seed value for the environment.")
+    p.add_argument("--print_episodes", action='store_true',
+                   help="Print information each episode")
     return p.parse_args()
 
 class DQNTrainingModel:
@@ -47,7 +49,7 @@ class DQNTrainingModel:
         self.num_actions = 4
 
     def train(self, grid_paths: list[Path], no_gui: bool, sigma: float, fps: int,
-         episodes: int, steps: int, random_seed: int):
+         episodes: int, steps: int, random_seed: int, print_episodes: bool):
         
         for grid in grid_paths:
         
@@ -55,7 +57,7 @@ class DQNTrainingModel:
                             random_seed=random_seed, agent_start_pos=(13, 13))
 
             rewards_per_episode = []
-            
+
             model = DQN(self.num_state, self.num_actions)
             optimizer = optim.Adam(model.parameters(), lr=1e-3)
 
@@ -125,11 +127,12 @@ class DQNTrainingModel:
                 # Decay epsilon (multiply times decay, NOT linear)
                 epsilon = max(epsilon * self.epsilon_decay, self.epsilon_min)
 
-                #print(f"Episode {episode}, Reward: {episode_reward:.2f}, Epsilon: {epsilon:.5f}")
+                if(print_episodes):
+                    print(f"Episode {episode}, Reward: {episode_reward:.2f}, Epsilon: {epsilon:.5f}")
 
 
 if __name__ == '__main__':
     args = parse_args()
 
     model = DQNTrainingModel()
-    model.train(args.GRID, args.no_gui, args.sigma, args.fps, args.episodes, args.steps, args.random_seed)
+    model.train(args.GRID, args.no_gui, args.sigma, args.fps, args.episodes, args.steps, args.random_seed, args.print_episodes)
