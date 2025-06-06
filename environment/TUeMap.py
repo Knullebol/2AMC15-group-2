@@ -15,11 +15,17 @@ FONT_COLOR = (250, 250, 250)    # Color for text labels
 
 
 class Buildings:
+    """
+    Helper class to store building coordinates and names for matplotlib label
+    """
     building_coors = {}
 
 
 def draw_TUe_map(pygame, screen):
-
+    """
+    Draws a schematic map of the TUe area.
+    OSMnx fetches map elements, and pygame renders all of them.
+    """
     # Get buildings and roads
     G = ox.graph_from_point(CENTER, dist=RADIUS, network_type='drive')
     buildings = ox.features_from_point(CENTER, dist=RADIUS, tags={'building': True})
@@ -44,7 +50,7 @@ def draw_TUe_map(pygame, screen):
 
     pygame.init()
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
-    pygame.display.set_caption("Eindhoven Schematic Map (osmnx)")
+    pygame.display.set_caption("TU/e Map")
     screen.fill(BG_COLOR)
 
     # Draw buildings first

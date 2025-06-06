@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import matplotlib.patheffects as effects
 
 # Agent starting position
-SPAR_LOCATION = (415, 286)
+SPAR_LOCATION = (454, 289)
 REWARD_STEP = -0.25
 REWARD_OBSTACLE = -2.0
 REWARD_GOAL = 250.0
@@ -77,6 +77,7 @@ class TUeMapEnv(gym.Env):
         # Minimum distance between agent start and goal (in pixels)
         self.min_goal_distance = 100.0
         self.goal_threshold = goal_threshold
+
 
     def _preprocess_map(self):
         """
