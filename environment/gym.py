@@ -14,13 +14,13 @@ REWARD_STEP = -0.25
 REWARD_OBSTACLE = -2.0
 REWARD_GOAL = 250.0
 MAX_ATTEMPTS = 100  # Maximum attempts to generate delivery points
-DEFAULT_MAX_STEPS = 1000 # Default maximum steps for an episode
+DEFAULT_MAX_STEPS = 5000 # Default maximum steps for an episode
 
 class TUeMapEnv(gym.Env):
     """
     A gymnasium continuous environment that simulates delivery tasks on the TU/e campus.
     """
-    def __init__(self, goal_threshold=20.0, num_delivery_points=2, max_steps=DEFAULT_MAX_STEPS):
+    def __init__(self, goal_threshold=10.0, num_delivery_points=2, max_steps=DEFAULT_MAX_STEPS):
         """
         Initialize the TU/e Map environment.
         Args:
@@ -63,11 +63,10 @@ class TUeMapEnv(gym.Env):
             mask = np.logical_or(mask, matches)
 
         self.access_mask = mask.astype(np.uint8)
-        self.path = []
 
         # Movement parameters
-        self.forward_speed = 10  # pixels per step
-        self.turn_speed = np.deg2rad(20)  # radians per step
+        self.forward_speed = 5  # pixels per step
+        self.turn_speed = np.deg2rad(15)  # radians per step
 
         # Multiple delivery points (set in reset())
         self.delivery_points = []
@@ -77,6 +76,9 @@ class TUeMapEnv(gym.Env):
         # Minimum distance between agent start and goal (in pixels)
         self.min_goal_distance = 100.0
         self.goal_threshold = goal_threshold
+        
+        # Store an agent's path
+        self.path = []
 
 
     def _preprocess_map(self):
@@ -214,6 +216,20 @@ class TUeMapEnv(gym.Env):
         # Only update position if accessible
         px, py = int(nx), int(ny)
         if self.access_mask[px, py]:
+            # Detect if the agent crosses white area
+            can_move_forward = True
+            if action == 0:
+                num_samples = int(np.hypot(nx - x, ny - y)) * 2
+                for i in range(1, num_samples + 1):
+                    sample_x = int(x + (nx - x) * i / num_samples)
+                    sample_y = int(y + (ny - y) * i / num_samples)
+                    if not self.access_mask[sample_x, sample_y]:
+                        can_move_forward = False
+                        reward = REWARD_OBSTACLE
+                        break
+            if not can_move_forward:
+                nx, ny = x, y
+                
             self.state = np.array([nx, ny, ntheta], dtype=np.float32)
         else:
             # If not accessible, stay in place, only update theta if turning
