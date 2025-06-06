@@ -8,3 +8,4 @@ colorcet >=3.0
 osmnx
 shapely
 matplotlib
+gymnasium
