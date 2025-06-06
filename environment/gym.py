@@ -10,26 +10,29 @@ import matplotlib.patheffects as effects
 
 # Agent starting position
 SPAR_LOCATION = (415, 286)
-REWARD_STEP = -1.0
-REWARD_OBSTACLE = -5.0
-REWARD_GOAL = 100.0
+REWARD_STEP = -0.25
+REWARD_OBSTACLE = -2.0
+REWARD_GOAL = 250.0
 MAX_ATTEMPTS = 100  # Maximum attempts to generate delivery points
-DEFAULT_MAX_STEPS = 10000 # Default maximum steps for an episode
+DEFAULT_MAX_STEPS = 1000 # Default maximum steps for an episode
 
 class TUeMapEnv(gym.Env):
     """
     A gymnasium continuous environment that simulates delivery tasks on the TU/e campus.
     """
-    def __init__(self, goal_threshold=20.0, num_delivery_points=2):
+    def __init__(self, goal_threshold=20.0, num_delivery_points=2, max_steps=DEFAULT_MAX_STEPS):
         """
         Initialize the TU/e Map environment.
         Args:
             goal_threshold (float): Distance threshold to consider agent reached goal (in pixels)
             num_delivery_points (int): Number of delivery points to generate
+            max_steps (int): Maximum number of steps before truncation
         """
         super(TUeMapEnv, self).__init__()
         self.width, self.height = 1280, 860
         self.rng = np.random.default_rng()
+        self.max_steps = max_steps
+        self.steps_count = 0
 
         # Action: 0=forward, 1=turn left, 2=turn right
         self.action_space = spaces.Discrete(3)
@@ -41,31 +44,12 @@ class TUeMapEnv(gym.Env):
             dtype=np.float32,
         )
         self.screen = None
-        self.map_surface = None
-        self.access_mask = None  # 1=road, 0=obstacle
-        self._preprocess_map()
-        self.path = []
 
-        # Movement parameters
-        self.forward_speed = 5.0  # pixels per step
-        self.turn_speed = np.deg2rad(10)  # radians per step
-
-        # Multiple delivery points (set in reset())
-        self.delivery_points = []
-        self.current_goal_idx = 0
-        self.num_delivery_points = num_delivery_points
-
-        # Minimum distance between agent start and goal (in pixels)
-        self.min_goal_distance = 200.0
-        self.goal_threshold = goal_threshold
-
-    def _preprocess_map(self):
-        """
-        Mask buildings and roads to mark accessible areas and obstacles.
-        """
+        # Cache map_surface and access_mask in __init__
         pygame.init()
-        self.map_surface = draw_TUe_map(pygame, self.map_surface)
+        self.map_surface = draw_TUe_map(pygame, None)
 
+        # Create access_mask
         map_pixels = pygame.surfarray.array3d(self.map_surface)  # shape: (width, height, 3)
         map_pixels = map_pixels.transpose(2, 0, 1)  # shape: (3, width, height)
 
@@ -79,6 +63,44 @@ class TUeMapEnv(gym.Env):
             mask = np.logical_or(mask, matches)
 
         self.access_mask = mask.astype(np.uint8)
+        self.path = []
+
+        # Movement parameters
+        self.forward_speed = 10  # pixels per step
+        self.turn_speed = np.deg2rad(20)  # radians per step
+
+        # Multiple delivery points (set in reset())
+        self.delivery_points = []
+        self.current_goal_idx = 0
+        self.num_delivery_points = num_delivery_points
+
+        # Minimum distance between agent start and goal (in pixels)
+        self.min_goal_distance = 100.0
+        self.goal_threshold = goal_threshold
+
+    def _preprocess_map(self):
+        """
+        Mask buildings and roads to mark accessible areas and obstacles.
+        """
+        # Map surface and access mask are now cached in __init__
+        # This method is kept for backward compatibility
+        if self.map_surface is None:
+            pygame.init()
+            self.map_surface = draw_TUe_map(pygame, None)
+
+            map_pixels = pygame.surfarray.array3d(self.map_surface)  # shape: (width, height, 3)
+            map_pixels = map_pixels.transpose(2, 0, 1)  # shape: (3, width, height)
+
+            # Accessible: road color (180,180,180) or street color (120,120,120)
+            road_colors = [(180,180,180), (120,120,120)]
+            mask = np.zeros((self.width, self.height), dtype=bool)
+
+            for color in road_colors:
+                color_arr = np.array(color)[:, None, None]
+                matches = np.all(map_pixels == color_arr, axis=0)
+                mask = np.logical_or(mask, matches)
+
+            self.access_mask = mask.astype(np.uint8)
 
     def reset(self, seed=None):
         """
@@ -89,6 +111,9 @@ class TUeMapEnv(gym.Env):
         super().reset(seed=seed)
         if seed is not None:
             self.rng = np.random.default_rng(seed)
+
+        # Reset step counter
+        self.steps_count = 0
 
         # Set agent's start position to fixed SPAR location
         px, py = SPAR_LOCATION
@@ -147,8 +172,16 @@ class TUeMapEnv(gym.Env):
             observation (numpy.ndarray): The normalized observation after taking the action
             reward (float): The reward received for taking the action
             terminated (bool): Whether the episode has terminated (all goals reached)
+            truncated (bool): Whether the episode was truncated (max steps exceeded)
         """
         x, y, theta = self.state
+
+        # Calculate distance to current goal before action
+        distance_before = float('inf')
+        if self.delivery_points and self.current_goal_idx < len(self.delivery_points):
+            agent_pos = self.state[:2]
+            current_goal = np.array(self.delivery_points[self.current_goal_idx])
+            distance_before = np.linalg.norm(agent_pos - current_goal)
 
         # Apply action
         if action == 0:
@@ -190,6 +223,17 @@ class TUeMapEnv(gym.Env):
                 self.state = np.array([x, y, ntheta], dtype=np.float32)
             reward = REWARD_OBSTACLE  # Penalty for hitting obstacle
 
+        # Calculate distance to current goal after action
+        distance_after = float('inf')
+        if self.delivery_points and self.current_goal_idx < len(self.delivery_points):
+            agent_pos = self.state[:2]
+            current_goal = np.array(self.delivery_points[self.current_goal_idx])
+            distance_after = np.linalg.norm(agent_pos - current_goal)
+
+            # Add reward proportional to the reduction in distance
+            if distance_before != float('inf'):
+                reward += (distance_before - distance_after) * 0.1
+
         # Check if agent reached the current goal
         at_current_goal = self._at_goal()
         terminated = False
@@ -199,7 +243,16 @@ class TUeMapEnv(gym.Env):
             if self.current_goal_idx >= len(self.delivery_points):
                 terminated = True
 
+        # Increment step counter
+        self.steps_count += 1
+
+        # Check for truncation condition
         truncated = False
+
+        # Truncate if max steps exceeded
+        if self.steps_count >= self.max_steps:
+            truncated = True
+
         self.path.append(self.state[:2].copy())
 
         obs = self._get_normalized_obs()
@@ -257,11 +310,14 @@ class TUeMapEnv(gym.Env):
 
         return points
 
-    def plot_map_with_path(self, path=None, delivery_points=None, figsize=(16, 10)):
+    def plot_map_with_path(self, path=None, delivery_points=None, figsize=(16, 10), is_training=False):
         """
         Visualize the TUe map, path, and delivery points using matplotlib.
         Matplotlib is of higher resolution in comparison to pygame.
         """
+        # Skip plotting during training to improve performance
+        if is_training:
+            return
         path_width = 2
         current_goal_size = 150
         remaining_goal_size = 80
@@ -366,4 +422,4 @@ if __name__ == "__main__":
     total_reward, success, steps = run_random_episode(env, seed=None)
     print(f"Episode finished after {steps} steps with total reward {total_reward}")
     print(f"Goal reached: {success}")
-    env.plot_map_with_path(env.path)
+    env.plot_map_with_path(env.path, is_training=False)
