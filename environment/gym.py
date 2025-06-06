@@ -382,8 +382,8 @@ class TUeMapEnv(gym.Env):
             ax.scatter([path[0][0]], [path[0][1]], s=start_point_size, c='orange', marker='o',
                       edgecolors='black', zorder=start_point_border, label='Start')
 
-        building_dict = dict(zip(Buildings.building_names, Buildings.building_coors))
-        for name, (bx, by) in building_dict.items():
+        building_coors_dict = Buildings.building_coors
+        for name, (bx, by) in building_coors_dict.items():
             if not isinstance(name, float):
                 ax.text(
                     bx, by, name, fontsize=10, color='white', ha='center', va='center', weight='bold',
