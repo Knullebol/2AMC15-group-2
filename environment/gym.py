@@ -8,21 +8,36 @@ import pygame
 import matplotlib.pyplot as plt
 import matplotlib.patheffects as effects
 
+# Agent starting position
+SPAR_LOCATION = (415, 286)
+REWARD_STEP = -1.0
+REWARD_OBSTACLE = -5.0
+REWARD_GOAL = 100.0
+MAX_ATTEMPTS = 100  # Maximum attempts to generate delivery points
+DEFAULT_MAX_STEPS = 10000 # Default maximum steps for an episode
+
 class TUeMapEnv(gym.Env):
     """
-    A gymnasium continuous environment integrating TUe map.
+    A gymnasium continuous environment that simulates delivery tasks on the TU/e campus.
     """
-    def __init__(self):
+    def __init__(self, goal_threshold=20.0, num_delivery_points=2):
+        """
+        Initialize the TU/e Map environment.
+        Args:
+            goal_threshold (float): Distance threshold to consider agent reached goal (in pixels)
+            num_delivery_points (int): Number of delivery points to generate
+        """
         super(TUeMapEnv, self).__init__()
         self.width, self.height = 1280, 860
-        
+        self.rng = np.random.default_rng()
+
         # Action: 0=forward, 1=turn left, 2=turn right
         self.action_space = spaces.Discrete(3)
-        
-        # State: x, y, theta (all continuous)
+
+        # State: agent_x, agent_y, agent_orientation, goal_x, goal_y (all normalized to [0,1])
         self.observation_space = spaces.Box(
-            low=np.array([0.0, 0.0, -np.pi], dtype=np.float32),
-            high=np.array([self.width, self.height, np.pi], dtype=np.float32),
+            low=np.array([0.0, 0.0, 0.0, 0.0, 0.0], dtype=np.float32),
+            high=np.array([1.0, 1.0, 1.0, 1.0, 1.0], dtype=np.float32),
             dtype=np.float32,
         )
         self.screen = None
@@ -30,12 +45,19 @@ class TUeMapEnv(gym.Env):
         self.access_mask = None  # 1=road, 0=obstacle
         self._preprocess_map()
         self.path = []
-        
+
         # Movement parameters
         self.forward_speed = 5.0  # pixels per step
         self.turn_speed = np.deg2rad(10)  # radians per step
-        
-        self.delivery_points = self.add_delivery_points()
+
+        # Multiple delivery points (set in reset())
+        self.delivery_points = []
+        self.current_goal_idx = 0
+        self.num_delivery_points = num_delivery_points
+
+        # Minimum distance between agent start and goal (in pixels)
+        self.min_goal_distance = 200.0
+        self.goal_threshold = goal_threshold
 
     def _preprocess_map(self):
         """
@@ -43,76 +65,122 @@ class TUeMapEnv(gym.Env):
         """
         pygame.init()
         self.map_surface = draw_TUe_map(pygame, self.map_surface)
-        
+
         map_pixels = pygame.surfarray.array3d(self.map_surface)  # shape: (width, height, 3)
         map_pixels = map_pixels.transpose(2, 0, 1)  # shape: (3, width, height)
-        
+
         # Accessible: road color (180,180,180) or street color (120,120,120)
         road_colors = [(180,180,180), (120,120,120)]
         mask = np.zeros((self.width, self.height), dtype=bool)
-        
+
         for color in road_colors:
             color_arr = np.array(color)[:, None, None]
             matches = np.all(map_pixels == color_arr, axis=0)
             mask = np.logical_or(mask, matches)
-            
+
         self.access_mask = mask.astype(np.uint8)
 
     def reset(self, seed=None):
         """
-        Reset the environment to a random accessible location (not obstacle).
+        Reset the environment with the agent at the SPAR location (415, 286)
+        and generate multiple delivery points on walkable tiles that are at least
+        min_goal_distance pixels away from the start and from each other.
         """
         super().reset(seed=seed)
+        if seed is not None:
+            self.rng = np.random.default_rng(seed)
 
-        while True:
-            x = np.random.uniform(0, 1)
-            y = np.random.uniform(0, 1)
-            px = int(x * (self.width-1))
-            py = int(y * (self.height-1))
-            
-            if self.access_mask[px, py]:
-                theta = np.random.uniform(-np.pi, np.pi)
-                self.state = np.array([px, py, theta], dtype=np.float32)
-                break
-            
+        # Set agent's start position to fixed SPAR location
+        px, py = SPAR_LOCATION
+        theta = self.rng.uniform(-np.pi, np.pi)
+        self.state = np.array([px, py, theta], dtype=np.float32)
+        start_pos = self.state[:2]
+
+        # Generate delivery points
+        self.delivery_points = self.add_delivery_points(
+            start_pos=start_pos,
+            n_points=self.num_delivery_points
+        )
+
+        # Sort delivery points based on distance from start position
+        if self.delivery_points:
+            self.delivery_points.sort(key=lambda point: np.linalg.norm(np.array(point) - start_pos))
+
+        self.current_goal_idx = 0
         self.path = [self.state[:2].copy()]
-        return self.state.copy(), {}
+
+        # Create normalized observation
+        obs = self._get_normalized_obs()
+
+        return obs, {}
+
+    def _get_normalized_obs(self):
+        """
+        Creates a normalized observation vector from the current state.
+        """
+        x, y, theta = self.state
+
+        # Get current goal coordinates
+        if self.delivery_points and self.current_goal_idx < len(self.delivery_points):
+            gx, gy = self.delivery_points[self.current_goal_idx]
+        else:
+            # Default to agent position if no goal is set (should not happen)
+            gx, gy = x, y
+
+        # Normalize x, y coordinates by dividing by width/height
+        norm_x = x / (self.width - 1)
+        norm_y = y / (self.height - 1)
+
+        # Normalize theta to [0, 1] (from [-pi, pi])
+        norm_theta = (theta + np.pi) / (2 * np.pi)
+
+        # Normalize goal coordinates
+        norm_gx = gx / (self.width - 1)
+        norm_gy = gy / (self.height - 1)
+
+        return np.array([norm_x, norm_y, norm_theta, norm_gx, norm_gy], dtype=np.float32)
 
     def step(self, action):
         """
         Take a step in the environment based on the action.
+        Returns:
+            observation (numpy.ndarray): The normalized observation after taking the action
+            reward (float): The reward received for taking the action
+            terminated (bool): Whether the episode has terminated (all goals reached)
         """
         x, y, theta = self.state
-        
+
         # Apply action
         if action == 0:
             # Move forward
             nx = x + self.forward_speed * np.cos(theta)
             ny = y + self.forward_speed * np.sin(theta)
             ntheta = theta
-            
+
         elif action == 1:
             # Turn left
             nx, ny = x, y
             ntheta = theta + self.turn_speed
-            
+
         elif action == 2:
             # Turn right
             nx, ny = x, y
             ntheta = theta - self.turn_speed
-            
+
         # Normalize theta to [-pi, pi]
         ntheta = (ntheta + np.pi) % (2 * np.pi) - np.pi
-        
+
         # Prevent going out of bounds
         nx = np.clip(nx, 0, self.width-1)
         ny = np.clip(ny, 0, self.height-1)
-        
+
+        # Default reward is time penalty per step
+        reward = REWARD_STEP
+
         # Only update position if accessible
         px, py = int(nx), int(ny)
         if self.access_mask[px, py]:
             self.state = np.array([nx, ny, ntheta], dtype=np.float32)
-            reward = 0.0
         else:
             # If not accessible, stay in place, only update theta if turning
             if action == 0:
@@ -120,134 +188,144 @@ class TUeMapEnv(gym.Env):
                 self.state = np.array([x, y, theta], dtype=np.float32)
             else:
                 self.state = np.array([x, y, ntheta], dtype=np.float32)
-            reward = -5.0  # Penalty for hitting obstacle
+            reward = REWARD_OBSTACLE  # Penalty for hitting obstacle
+
+        # Check if agent reached the current goal
+        at_current_goal = self._at_goal()
         terminated = False
+        if at_current_goal:
+            reward = REWARD_GOAL
+            self.current_goal_idx += 1
+            if self.current_goal_idx >= len(self.delivery_points):
+                terminated = True
+
         truncated = False
         self.path.append(self.state[:2].copy())
-        return self.state.copy(), reward, terminated, truncated, {}
 
-    def add_delivery_points(self, points=[], n_points=2):
+        obs = self._get_normalized_obs()
+
+        return obs, reward, terminated, truncated, {}
+
+    def _at_goal(self):
+        """
+        Checks if the agent has reached the current goal.
+        """
+        if not self.delivery_points or self.current_goal_idx >= len(self.delivery_points):
+            return False
+
+        agent_pos = self.state[:2]
+        current_goal = np.array(self.delivery_points[self.current_goal_idx])
+
+        # Calculate Euclidean distance between agent and current goal
+        distance = np.linalg.norm(agent_pos - current_goal)
+
+        # Return True if distance is less than threshold
+        return distance <= self.goal_threshold
+
+    def add_delivery_points(self, start_pos, points=[], n_points=2):
         """
         Add multiple delivery points to the environment.
         """
         if not points:
+            points = []
             n = 0
-            while n < n_points:
-                x = int(np.random.uniform(0, 1) * (self.width-1))
-                y = int(np.random.uniform(0, 1) * (self.height-1))
-                if self.access_mask[x, y]:
+            attempts = 0
+            while n < n_points and attempts < MAX_ATTEMPTS:
+                attempts += 1
+                x = int(self.rng.uniform(0, 1) * (self.width-1))
+                y = int(self.rng.uniform(0, 1) * (self.height-1))
+
+                # Check if point is on accessible tile
+                if not self.access_mask[x, y]:
+                    continue
+
+                # Check if point is far enough from start position
+                point = np.array([x, y])
+                if np.linalg.norm(start_pos - point) < self.min_goal_distance:
+                    continue
+
+                # Check if point is far enough from other delivery points
+                too_close = False
+                for existing_point in points:
+                    if np.linalg.norm(np.array(existing_point) - point) < self.min_goal_distance:
+                        too_close = True
+                        break
+
+                if not too_close:
                     points.append((x, y))
                     n += 1
+
         return points
-    
-    def render(self):
-        """
-        Display the TUe map (Obsolete).
-        """
-        if self.map_surface is None:
-            self._preprocess_map()
-            
-        if self.screen is None:
-            pygame.init()
-            self.screen = draw_TUe_map(pygame, self.screen)
 
-        # Draw agent
-        x = int(self.state[0] * (self.width-1))
-        y = int(self.state[1] * (self.height-1))
-        font = pygame.font.SysFont('calibri', 20, bold=True)
-        running = True
-        clicked_coord = None
-        while running:
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    running = False
-                elif event.type == pygame.MOUSEBUTTONDOWN:
-                    mouse_x, mouse_y = pygame.mouse.get_pos()
-                    clicked_coord = (mouse_x, mouse_y)
-            # Redraw map and agent every frame
-            self.screen.blit(self.map_surface, (0,0))
-            pygame.draw.circle(self.screen, (233, 113, 50), (x, y), 10)
-            # Draw coordinates at top right if clicked
-            if clicked_coord is not None:
-                coord_text = f"({clicked_coord[0]}, {clicked_coord[1]})"
-                text_surface = font.render(coord_text, True, (0,0,0))
-                text_rect = text_surface.get_rect(topright=(self.width - 10, 10))
-                pygame.draw.rect(self.screen, (240, 240, 240), text_rect.inflate(10, 10))
-                self.screen.blit(text_surface, text_rect)
-            pygame.display.flip()
-            pygame.time.delay(20)
-
-    def visualize_path(self, path):
-        """
-        (Obsolete) Visualize the agent path using a red line on the TUe map.
-        """
-        point_size = 6
-        path_width = 2
-        
-        if self.map_surface is None:
-            self._preprocess_map()
-        if self.screen is None:
-            pygame.init()
-            self.screen = draw_TUe_map(pygame, self.screen)
-
-        # Starting point
-        start_x, start_y = self.path[0]
-        pygame.draw.circle(self.screen, (239, 177, 21), (int(start_x), int(start_y)), point_size + 2)
-        pygame.draw.circle(self.screen, (240, 240, 240), (int(start_x), int(start_y)), point_size)
-        
-        # Delivery points
-        for point in self.delivery_points:
-            px, py = point
-            pygame.draw.circle(self.screen, (17, 167, 28), (px, py), point_size + 2)
-            pygame.draw.circle(self.screen, (240, 240, 240), (px, py), point_size)
-        
-        # Agent path
-        if len(path) > 1:
-            points = [(int(point[0]), int(point[1])) for point in path]
-            pygame.draw.lines(self.screen, (235, 45, 0), False, points, path_width)
-        pygame.display.flip()
-        
-        # Keep the window open until closed by user
-        running = True
-        while running:
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    running = False
-            pygame.time.delay(10)
-    
     def plot_map_with_path(self, path=None, delivery_points=None, figsize=(16, 10)):
         """
         Visualize the TUe map, path, and delivery points using matplotlib.
         Matplotlib is of higher resolution in comparison to pygame.
         """
+        path_width = 2
+        current_goal_size = 150
+        remaining_goal_size = 80
+        completed_goal_size = 60
+        start_point_size = 100
+        current_goal_border = 8
+        remaining_goal_border = 5
+        completed_goal_border = 4
+        start_point_border = 6
+
         if self.map_surface is None:
             self._preprocess_map()
-            
+
         # Get map pixels (RGB)
         map_pixels = pygame.surfarray.array3d(self.map_surface)  # (width, height, 3)
-        
+
         # Transpose to (height, width, 3) for matplotlib
         map_pixels = np.transpose(map_pixels, (1, 0, 2))
-        
+
         fig, ax = plt.subplots(figsize=figsize)
         ax.imshow(map_pixels)
 
+        # Plot agent path (red)
         if path is not None and len(path) > 1:
             px = [point[0] for point in path]
             py = [point[1] for point in path]
-            ax.plot(px, py, color='red', linewidth=2, label='Path')
+            ax.plot(px, py, color='red', linewidth=path_width, label='Agent Path')
 
         if delivery_points is None:
             delivery_points = getattr(self, 'delivery_points', [])
-            
-        if delivery_points:
-            dpx = [pt[0] for pt in delivery_points]
-            dpy = [pt[1] for pt in delivery_points]
-            ax.scatter(dpx, dpy, s=80, c='green', edgecolors='black', zorder=5, label='Delivery Points')
 
+        # Plot delivery points
+        if delivery_points:
+            # Get current goal index
+            current_idx = getattr(self, 'current_goal_idx', 0)
+
+            # Plot current goal (blue star)
+            if current_idx < len(delivery_points):
+                current_goal = delivery_points[current_idx]
+                ax.scatter([current_goal[0]], [current_goal[1]], s=current_goal_size, c='blue', marker='*',
+                          edgecolors='black', zorder=current_goal_border, label='Current Goal')
+
+            # Plot remaining delivery points (green)
+            remaining_points = [pt for i, pt in enumerate(delivery_points)
+                               if i != current_idx and i >= current_idx]
+            if remaining_points:
+                rpx = [pt[0] for pt in remaining_points]
+                rpy = [pt[1] for pt in remaining_points]
+                ax.scatter(rpx, rpy, s=remaining_goal_size, c='green', marker='o',
+                          edgecolors='black', zorder=remaining_goal_border, label='Remaining Delivery Points')
+
+            # Plot completed delivery points (gray)
+            completed_points = [pt for i, pt in enumerate(delivery_points) if i < current_idx]
+            if completed_points:
+                cpx = [pt[0] for pt in completed_points]
+                cpy = [pt[1] for pt in completed_points]
+                ax.scatter(cpx, cpy, s=completed_goal_size, c='gray', marker='o',
+                          edgecolors='black', zorder=completed_goal_border, label='Completed Delivery Points')
+
+        # Plot start point (orange)
         if path is not None and len(path) > 0:
-            ax.scatter([path[0][0]], [path[0][1]], s=80, c='orange', edgecolors='black', zorder=6, label='Start')
-        
+            ax.scatter([path[0][0]], [path[0][1]], s=start_point_size, c='orange', marker='o',
+                      edgecolors='black', zorder=start_point_border, label='Start')
+
         building_dict = dict(zip(Buildings.building_names, Buildings.building_coors))
         for name, (bx, by) in building_dict.items():
             if not isinstance(name, float):
@@ -263,15 +341,29 @@ class TUeMapEnv(gym.Env):
         ax.legend()
         plt.tight_layout()
         plt.show()
-    
 
-np.random.seed(123)
-env = TUeMapEnv()
-state, _ = env.reset()
-for _ in range(1000):
-    action = env.action_space.sample()  # Random action
-    state, reward, done, truncated, info = env.step(action)
-    if done or truncated:
-        break
 
-env.plot_map_with_path(env.path)
+def run_random_episode(env, max_steps=DEFAULT_MAX_STEPS, seed=None):
+    obs, _ = env.reset(seed=seed)
+    total_reward, steps = 0, 0
+    done = False
+    while not done and steps < max_steps:
+        action = env.action_space.sample()
+        obs, reward, done, truncated, _ = env.step(action)
+        total_reward += reward
+        steps += 1
+        if truncated:
+            break
+    return total_reward, done, steps
+
+
+if __name__ == "__main__":
+    env = TUeMapEnv()
+    # Seed will be passed to reset() instead of using global np.random.seed
+
+    print("Observation space:", env.observation_space)
+    print("Action space:", env.action_space)
+    total_reward, success, steps = run_random_episode(env, seed=None)
+    print(f"Episode finished after {steps} steps with total reward {total_reward}")
+    print(f"Goal reached: {success}")
+    env.plot_map_with_path(env.path)
