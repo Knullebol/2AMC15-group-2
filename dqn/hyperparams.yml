@@ -1,7 +1,10 @@
-replay_memory_size: 100000
+replay_memory_size: 100000 # Unused in (previous) implementation
 mini_batch_size: 32
 epsilon_init: 1
 epsilon_decay: 0.999
 epsilon_min: 0.05
 gamma: 0.95
 repMemSize: 5000
+# How often to update the target network, hardcoded value from previous train_dqn.py,
+# moved to hyperparams.yml to make it configurable
+target_sync_freq: 20
