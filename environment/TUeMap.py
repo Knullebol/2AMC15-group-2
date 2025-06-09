@@ -34,10 +34,10 @@ def draw_TUe_map(pygame, screen):
     # Get bounds of the graph, and intialize the bounding box
     nodes = ox.graph_to_gdfs(G, edges=False)  # convert nodes to GeoDataFrame
     minx, miny, maxx, maxy = nodes.total_bounds
-    
+
     if not buildings.empty:
         bminx, bminy, bmaxx, bmaxy = buildings.total_bounds
-        
+
         # adjust the bounding box to just include visible buildings
         minx, miny = min(minx, bminx), min(miny, bminy)
         maxx, maxy = max(maxx, bmaxx), max(maxy, bmaxy)
@@ -74,7 +74,7 @@ def draw_TUe_map(pygame, screen):
                 coords = list(row.geometry.coords)
                 points = [geo_to_screen(x, y) for x, y in coords]
                 pygame.draw.lines(screen, ROAD_COLOR, False, points, 6)
-                
+
             elif row.geometry.geom_type == 'MultiLineString':
                 for linestr in row.geometry.geoms:
                     coords = list(linestr.coords)

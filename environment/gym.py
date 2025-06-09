@@ -1,7 +1,7 @@
-from gymnasium import spaces
-from TUeMap import draw_TUe_map
-from TUeMap import Buildings
+from environment.TUeMap import draw_TUe_map
+from environment.TUeMap import Buildings
 
+from gymnasium import spaces
 import gymnasium as gym
 import numpy as np
 import pygame
@@ -14,12 +14,14 @@ REWARD_STEP = -0.25
 REWARD_OBSTACLE = -2.0
 REWARD_GOAL = 250.0
 MAX_ATTEMPTS = 100  # Maximum attempts to generate delivery points
-DEFAULT_MAX_STEPS = 5000 # Default maximum steps for an episode
+DEFAULT_MAX_STEPS = 5000  # Default maximum steps for an episode
+
 
 class TUeMapEnv(gym.Env):
     """
     A gymnasium continuous environment that simulates delivery tasks on the TU/e campus.
     """
+
     def __init__(self, goal_threshold=10.0, num_delivery_points=2, max_steps=DEFAULT_MAX_STEPS):
         """
         Initialize the TU/e Map environment.
@@ -54,7 +56,7 @@ class TUeMapEnv(gym.Env):
         map_pixels = map_pixels.transpose(2, 0, 1)  # shape: (3, width, height)
 
         # Accessible: road color (180,180,180) or street color (120,120,120)
-        road_colors = [(180,180,180), (120,120,120)]
+        road_colors = [(180, 180, 180), (120, 120, 120)]
         mask = np.zeros((self.width, self.height), dtype=bool)
 
         for color in road_colors:
@@ -76,10 +78,9 @@ class TUeMapEnv(gym.Env):
         # Minimum distance between agent start and goal (in pixels)
         self.min_goal_distance = 100.0
         self.goal_threshold = goal_threshold
-        
+
         # Store an agent's path
         self.path = []
-
 
     def _preprocess_map(self):
         """
@@ -95,7 +96,7 @@ class TUeMapEnv(gym.Env):
             map_pixels = map_pixels.transpose(2, 0, 1)  # shape: (3, width, height)
 
             # Accessible: road color (180,180,180) or street color (120,120,120)
-            road_colors = [(180,180,180), (120,120,120)]
+            road_colors = [(180, 180, 180), (120, 120, 120)]
             mask = np.zeros((self.width, self.height), dtype=bool)
 
             for color in road_colors:
@@ -229,7 +230,7 @@ class TUeMapEnv(gym.Env):
                         break
             if not can_move_forward:
                 nx, ny = x, y
-                
+
             self.state = np.array([nx, ny, ntheta], dtype=np.float32)
         else:
             # If not accessible, stay in place, only update theta if turning
@@ -375,16 +376,16 @@ class TUeMapEnv(gym.Env):
             if current_idx < len(delivery_points):
                 current_goal = delivery_points[current_idx]
                 ax.scatter([current_goal[0]], [current_goal[1]], s=current_goal_size, c='blue', marker='*',
-                          edgecolors='black', zorder=current_goal_border, label='Current Goal')
+                           edgecolors='black', zorder=current_goal_border, label='Current Goal')
 
             # Plot remaining delivery points (green)
             remaining_points = [pt for i, pt in enumerate(delivery_points)
-                               if i != current_idx and i >= current_idx]
+                                if i != current_idx and i >= current_idx]
             if remaining_points:
                 rpx = [pt[0] for pt in remaining_points]
                 rpy = [pt[1] for pt in remaining_points]
                 ax.scatter(rpx, rpy, s=remaining_goal_size, c='green', marker='o',
-                          edgecolors='black', zorder=remaining_goal_border, label='Remaining Delivery Points')
+                           edgecolors='black', zorder=remaining_goal_border, label='Remaining Delivery Points')
 
             # Plot completed delivery points (gray)
             completed_points = [pt for i, pt in enumerate(delivery_points) if i < current_idx]
@@ -392,12 +393,12 @@ class TUeMapEnv(gym.Env):
                 cpx = [pt[0] for pt in completed_points]
                 cpy = [pt[1] for pt in completed_points]
                 ax.scatter(cpx, cpy, s=completed_goal_size, c='gray', marker='o',
-                          edgecolors='black', zorder=completed_goal_border, label='Completed Delivery Points')
+                           edgecolors='black', zorder=completed_goal_border, label='Completed Delivery Points')
 
         # Plot start point (orange)
         if path is not None and len(path) > 0:
             ax.scatter([path[0][0]], [path[0][1]], s=start_point_size, c='orange', marker='o',
-                      edgecolors='black', zorder=start_point_border, label='Start')
+                       edgecolors='black', zorder=start_point_border, label='Start')
 
         building_coors_dict = Buildings.building_coors
         for name, (bx, by) in building_coors_dict.items():
