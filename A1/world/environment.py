@@ -33,6 +33,7 @@ except ModuleNotFoundError:
     from world.gui import GUI
     from world.path_visualizer import visualize_path
 
+
 class Environment:
     def __init__(self,
                  grid_fp: Path,
@@ -42,7 +43,6 @@ class Environment:
                  reward_fn: callable = None,
                  target_fps: int = 30,
                  random_seed: int | float | str | bytes | bytearray | None = 0):
-        
         """Creates the Grid Environment for the Reinforcement Learning robot
         from the provided file.
 
@@ -78,7 +78,7 @@ class Environment:
         self.agent_start_pos = agent_start_pos
         self.terminal_state = False
         self.sigma = sigma
-              
+
         # Set up reward function
         if reward_fn is None:
             warn("No reward function provided. Using default reward.")
@@ -96,7 +96,7 @@ class Environment:
 
     def getGrid(self):
         return self.grid
-    
+
     def _reset_info(self) -> dict:
         """Resets the info dictionary.
 
@@ -107,7 +107,7 @@ class Environment:
         return {"target_reached": False,
                 "agent_moved": False,
                 "actual_action": None}
-    
+
     @staticmethod
     def _reset_world_stats() -> dict:
         """Resets the world stats dictionary.
@@ -146,7 +146,6 @@ class Environment:
             idx = random.randint(0, len(zeros[0]) - 1)
             self.agent_pos = (zeros[0][idx], zeros[1][idx])
 
-
     def reset(self, **kwargs) -> tuple[int, int]:
         """Reset the environment to an initial state.
 
@@ -173,7 +172,7 @@ class Environment:
                 case _:
                     raise ValueError(f"{k} is not one of the possible "
                                      f"keyword arguments.")
-        
+
         # Reset variables
         self.grid = Grid.load_grid(self.grid_fp).cells
         self._initialize_agent_pos()
@@ -222,7 +221,6 @@ class Environment:
                 raise ValueError(f"Grid is badly formed. It has a value of "
                                  f"{self.grid[new_pos]} at position "
                                  f"{new_pos}.")
-        
 
     def step(self, action: int) -> tuple[np.ndarray, float, bool]:
         """This function makes the agent take a step on the grid.
@@ -241,9 +239,9 @@ class Environment:
             1) The reward for the agent,
             2) If the terminal state has been reached, and
         """
-        
+
         self.world_stats["total_steps"] += 1
-        
+
         # GUI specific code
         is_single_step = False
         if not self.no_gui:
@@ -258,7 +256,7 @@ class Environment:
                 paused_info = self._reset_info()
                 paused_info["agent_moved"] = True
                 self.gui.render(self.grid, self.agent_pos, paused_info,
-                                0, is_single_step)    
+                                0, is_single_step)
 
         # Add stochasticity into the agent action
         val = random.random()
@@ -266,17 +264,17 @@ class Environment:
             actual_action = action
         else:
             actual_action = random.randint(0, 3)
-        
+
         # Make the move
         self.info["actual_action"] = actual_action
-        direction = action_to_direction(actual_action)    
+        direction = action_to_direction(actual_action)
         new_pos = (self.agent_pos[0] + direction[0], self.agent_pos[1] + direction[1])
 
         # Calculate the reward for the agent
         reward = self.reward_fn(self.grid, new_pos)
 
         self._move_agent(new_pos)
-        
+
         self.world_stats["cumulative_reward"] += reward
 
         # GUI specific code
@@ -355,7 +353,7 @@ class Environment:
                           agent_start_pos=agent_start_pos,
                           target_fps=-1,
                           random_seed=random_seed)
-        
+
         state = env.reset()
         initial_grid = np.copy(env.grid)
 
@@ -363,7 +361,7 @@ class Environment:
         agent_path = [env.agent_pos]
 
         for _ in trange(max_steps, desc="Evaluating agent"):
-            
+
             action = agent.take_action(state)
             state, _, terminated, _ = env.step(action)
 
