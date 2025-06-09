@@ -1,6 +1,7 @@
 import numpy as np
 from gymnasium import spaces
 
+
 class EnvWrapper:
     """
     Wraps either A1_Folder.world.Environment or TUeMapEnv such that:
@@ -9,6 +10,7 @@ class EnvWrapper:
       - it always has .action_space and .observation_space
       - seeds TUeMapEnv once
     """
+
     def __init__(self, env, *, is_gym_env=False, seed=None):
         """
         Args:
