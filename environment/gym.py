@@ -1,5 +1,5 @@
-from environment.TUeMap import draw_TUe_map
-from environment.TUeMap import Buildings
+from TUeMap import draw_TUe_map
+from TUeMap import Buildings, HEIGHT, WIDTH, ROAD_COLOR
 
 from gymnasium import spaces
 import gymnasium as gym
@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import matplotlib.patheffects as effects
 
 # Agent starting position
-SPAR_LOCATION = (454, 289)
+SPAR_LOCATION = (182, 60)
 REWARD_STEP = -0.25
 REWARD_OBSTACLE = -2.0
 REWARD_GOAL = 250.0
@@ -22,7 +22,7 @@ class TUeMapEnv(gym.Env):
     A gymnasium continuous environment that simulates delivery tasks on the TU/e campus.
     """
 
-    def __init__(self, goal_threshold=10.0, num_delivery_points=2, max_steps=DEFAULT_MAX_STEPS):
+    def __init__(self, goal_threshold=15.0, num_delivery_points=2, max_steps=DEFAULT_MAX_STEPS):
         """
         Initialize the TU/e Map environment.
         Args:
@@ -31,7 +31,7 @@ class TUeMapEnv(gym.Env):
             max_steps (int): Maximum number of steps before truncation
         """
         super(TUeMapEnv, self).__init__()
-        self.width, self.height = 1280, 860
+        self.width, self.height = WIDTH, HEIGHT
         self.rng = np.random.default_rng()
         self.max_steps = max_steps
         self.steps_count = 0
@@ -55,8 +55,7 @@ class TUeMapEnv(gym.Env):
         map_pixels = pygame.surfarray.array3d(self.map_surface)  # shape: (width, height, 3)
         map_pixels = map_pixels.transpose(2, 0, 1)  # shape: (3, width, height)
 
-        # Accessible: road color (180,180,180) or street color (120,120,120)
-        road_colors = [(180, 180, 180), (120, 120, 120)]
+        road_colors = [ROAD_COLOR, (180, 180, 180), (120, 120, 120)]
         mask = np.zeros((self.width, self.height), dtype=bool)
 
         for color in road_colors:
@@ -67,7 +66,7 @@ class TUeMapEnv(gym.Env):
         self.access_mask = mask.astype(np.uint8)
 
         # Movement parameters
-        self.forward_speed = 5  # pixels per step
+        self.forward_speed = 10  # pixels per step
         self.turn_speed = np.deg2rad(15)  # radians per step
 
         # Multiple delivery points (set in reset())
@@ -293,7 +292,7 @@ class TUeMapEnv(gym.Env):
         # Return True if distance is less than threshold
         return distance <= self.goal_threshold
 
-    def add_delivery_points(self, start_pos, points=[], n_points=2):
+    def add_delivery_points(self, start_pos, points=[(66, 123), (80, 214)], n_points=2):
         """
         Add multiple delivery points to the environment.
         """
