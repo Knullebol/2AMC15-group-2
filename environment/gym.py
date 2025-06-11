@@ -1,5 +1,5 @@
-from TUeMap import draw_TUe_map
-from TUeMap import Buildings, HEIGHT, WIDTH, ROAD_COLOR
+from environment.TUeMap import draw_TUe_map
+from environment.TUeMap import Buildings, HEIGHT, WIDTH, ROAD_COLOR
 
 from gymnasium import spaces
 import gymnasium as gym

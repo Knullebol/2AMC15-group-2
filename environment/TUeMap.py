@@ -10,8 +10,6 @@ WIDTH, HEIGHT = 400, 300
 BG_COLOR = (240, 240, 240)      # Background color of the map
 ROAD_COLOR = (160, 160, 160)    # Color for roads
 BUILDING_COLOR = (80, 80, 80)   # Color for buildings
-FONT_COLOR = (250, 250, 250)    # Color for text labels
-PARKING_COLOR = (240, 240, 240)  # Color for parking areas
 
 
 class Buildings:
