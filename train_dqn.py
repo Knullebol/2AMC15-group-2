@@ -3,6 +3,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 import yaml
 import numpy as np
+import matplotlib.pyplot as plt
 from argparse import ArgumentParser
 from dqn.dqn_agent import DQN
 from dqn.experience_replay import ReplayMemory, Transition
@@ -18,6 +19,8 @@ def parse_args():
                    help="Number of steps per episode to go through.")
     p.add_argument("--random_seed", type=int, default=0,
                    help="Random seed value for the environment.")
+    p.add_argument("--logs", action="store_true",
+                   help="Print logs of the agent")
     return p.parse_args()
 
 
@@ -29,13 +32,15 @@ class DQNTrainingModel:
 
         self.mini_batch_size = hyperparams['mini_batch_size']
         self.epsilon_init = hyperparams['epsilon_init']
-        self.epsilon_decay = hyperparams['epsilon_decay']
         self.epsilon_min = hyperparams['epsilon_min']
         self.gamma = hyperparams['gamma']
         self.repMemSize = hyperparams['repMemSize']
         self.target_sync_freq = hyperparams['target_sync_freq']
 
-    def train(self, episodes: int, steps: int, seed: int):
+    def train(self, episodes: int, steps: int, seed: int, logs: bool):
+
+        # use gpu if available
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         torch.manual_seed(seed)
         np.random.seed(seed)
@@ -53,20 +58,29 @@ class DQNTrainingModel:
         action_dim = env.action_space.n
 
         # networks, optimizer and memory
-        policy_net = DQN(state_dim, action_dim)
-        target_net = DQN(state_dim, action_dim)
+        policy_net = DQN(state_dim, action_dim).to(device)
+        target_net = DQN(state_dim, action_dim).to(device)
         target_net.load_state_dict(policy_net.state_dict())
         target_net.eval()
 
         optimizer = optim.Adam(policy_net.parameters(), lr=1e-3)
         memory = ReplayMemory(self.repMemSize)
+
+        # keeps tracks of all rewards
+        all_rewards = []
+
+        # for logging later
+        best_reward = float('-inf')
+        best_episode = 0
+        best_path = None
+
         epsilon = self.epsilon_init
+        epsilon_delta = (self.epsilon_init - self.epsilon_min) / (episodes - 1)
 
         # training loop
         for ep in range(episodes):
-            print("GOT HERE 3")
             obs = env.reset()
-            state = torch.tensor(obs, dtype=torch.float32)
+            state = torch.tensor(obs, dtype=torch.float32).to(device)
             total_reward = 0.0
 
             for t in range(steps):
@@ -77,7 +91,7 @@ class DQNTrainingModel:
                         action = policy_net(state).argmax().item()
 
                 next_obs, reward, done, _ = env.step(action)
-                next_state = torch.tensor(next_obs, dtype=torch.float32)
+                next_state = torch.tensor(next_obs, dtype=torch.float32).to(device)
 
                 memory.append(state, action, next_state, reward)
                 state = next_state
@@ -87,10 +101,10 @@ class DQNTrainingModel:
                     batch = memory.sample(self.mini_batch_size)
                     batch = Transition(*zip(*batch))
 
-                    S = torch.stack(batch.state)
-                    A = torch.tensor(batch.action).unsqueeze(1)
-                    R = torch.tensor(batch.reward, dtype=torch.float32)
-                    S2 = torch.stack(batch.next_state)
+                    S = torch.stack(batch.state).to(device)
+                    A = torch.tensor(batch.action).unsqueeze(1).to(device)
+                    R = torch.tensor(batch.reward, dtype=torch.float32).to(device)
+                    S2 = torch.stack(batch.next_state).to(device)
 
                     Q = policy_net(S).gather(1, A).squeeze()
                     with torch.no_grad():
@@ -108,9 +122,37 @@ class DQNTrainingModel:
             if ep % self.target_sync_freq == 0:
                 target_net.load_state_dict(policy_net.state_dict())
 
-            epsilon = max(epsilon * self.epsilon_decay, self.epsilon_min)
+            # When logs is selecting, print all kinds of logs
+            if(logs):
+                print(f"Episode {ep:4d} | Reward: {total_reward: 6.2f} | Epsilon: {epsilon: .3f} | Buffer size: {len(memory): .0f} | Device: {device}")
 
-            print(f"Episode {ep:4d} | Reward: {total_reward: 6.2f} | Epsilon: {epsilon: .3f}")
+            if(total_reward > best_reward):
+                best_reward = total_reward
+                best_episode = ep
+                best_path = raw_env.path
+
+            # Linear epsilon that decays to the min (per step, NOT per episode)
+            epsilon -= epsilon_delta
+
+            all_rewards.append(total_reward)
+
+        print("Done training!")
+
+        # summary logs
+        if(logs):
+            print(f"\n***********\n* Summary *\n*********** \n Best episode: {best_episode: .0f} | Reward: {best_reward: 6.2f}")
+
+            # show path at the end
+            raw_env.plot_map_with_path(best_path, is_training=False)
+
+            # plot the rewards
+            x = list(range(episodes))
+            plt.plot(x, all_rewards)
+            plt.show()
+
+
+
+
 
 
 if __name__ == "__main__":
@@ -120,4 +162,5 @@ if __name__ == "__main__":
         episodes=args.episodes,
         steps=args.steps,
         seed=args.random_seed,
+        logs=args.logs
     )
