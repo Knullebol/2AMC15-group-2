@@ -8,8 +8,19 @@ CENTER = (51.447892, 5.486253)  # Latitude and longitude of TUe
 RADIUS = 180                    # Radius in meters to fetch the map
 WIDTH, HEIGHT = 400, 300
 BG_COLOR = (240, 240, 240)      # Background color of the map
-ROAD_COLOR = (160, 160, 160)    # Color for roads
 BUILDING_COLOR = (80, 80, 80)   # Color for buildings
+ROAD_COLOR = (160, 160, 160)    # Color for roads
+ROAD_SIZE = 8
+ROAD_EDGES = [                  # Extra predefined road to draw
+    [(164, 82), (164, 217)],
+    [(276, 71), (276, 83)],
+    [(90, 84), (90, 214)],
+    [(308, 174), (163, 174)],
+    [(166, 60), (184, 60)],
+    [(315, 26), (315, 82)],
+    [(309, 83), (400, 83)],
+    [(65, 124), (113, 124)],
+]
 
 
 class Buildings:
@@ -62,21 +73,15 @@ def draw_TUe_map(pygame: pygame, screen: pygame.Surface):
                 pygame.draw.polygon(screen, BUILDING_COLOR, pts, 0)
 
     # Draw road
-    pygame.draw.lines(screen, ROAD_COLOR, False, [(164, 82), (164, 217)], 6)
-    pygame.draw.lines(screen, ROAD_COLOR, False, [(276, 71), (276, 83)], 6)
-    pygame.draw.lines(screen, ROAD_COLOR, False, [(90, 84), (90, 214)], 6)
-    pygame.draw.lines(screen, ROAD_COLOR, False, [(308, 174), (163, 174)], 4)
-    pygame.draw.lines(screen, ROAD_COLOR, False, [(166, 60), (184, 60)], 6)
-    pygame.draw.lines(screen, ROAD_COLOR, False, [(315, 26), (315, 82)], 6)
-    pygame.draw.lines(screen, ROAD_COLOR, False, [(309, 83), (400 ,83)], 6)
-    pygame.draw.lines(screen, ROAD_COLOR, False, [(65, 124), (113, 124)], 6)
+    for edge in ROAD_EDGES:
+        pygame.draw.lines(screen, ROAD_COLOR, False, edge, ROAD_SIZE if edge != [(308, 174), (163, 174)] else 6)
     if not road.empty:
         for idx, row in road.iterrows():
             if isinstance(row['name'], float):
                 continue
             geom = row.geometry
             pygame.draw.lines(screen, ROAD_COLOR, False,
-                              [geo_to_screen(x, y) for x, y in np.array(geom.coords)], 6)
+                              [geo_to_screen(x, y) for x, y in np.array(geom.coords)], ROAD_SIZE)
                 
     # Store building coordinates and names into a dictionary
     if not buildings.empty:

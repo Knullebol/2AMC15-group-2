@@ -1,18 +1,22 @@
+from argparse import ArgumentParser
+from dqn.dqn_agent import DQN
+from dqn.experience_replay import ReplayMemory, Transition
+from dqn.env_wrapper import EnvWrapper
+from environment.gym import TUeMapEnv
+from tqdm import trange
+
 import torch
 import torch.nn.functional as F
 import torch.optim as optim
 import yaml
 import numpy as np
 import matplotlib.pyplot as plt
-from argparse import ArgumentParser
-from dqn.dqn_agent import DQN
-from dqn.experience_replay import ReplayMemory, Transition
-from dqn.env_wrapper import EnvWrapper
-from environment.gym import TUeMapEnv
 
 
 def parse_args():
     p = ArgumentParser(description="DIC Reinforcement Learning Trainer.")
+    p.add_argument("--detect_range", type=int, default=10,
+                   help="Squared sensor range of the agent.")
     p.add_argument("--episodes", type=int, default=1000,
                    help="Number of episodes to go through.")
     p.add_argument("--steps", type=int, default=100,
@@ -37,7 +41,7 @@ class DQNTrainingModel:
         self.repMemSize = hyperparams['repMemSize']
         self.target_sync_freq = hyperparams['target_sync_freq']
 
-    def train(self, episodes: int, steps: int, seed: int, logs: bool):
+    def train(self, detect_range: int, episodes: int, steps: int, seed: int, logs: bool):
 
         # use gpu if available
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -46,8 +50,8 @@ class DQNTrainingModel:
         np.random.seed(seed)
 
         raw_env = TUeMapEnv(
-            goal_threshold=10.0,
-            num_delivery_points=2,
+            detect_range=detect_range,
+            goal_threshold=15.0,
             max_steps=steps
         )
         wrapper = EnvWrapper(raw_env, is_gym_env=True, seed=seed)
@@ -78,7 +82,8 @@ class DQNTrainingModel:
         epsilon_delta = (self.epsilon_init - self.epsilon_min) / (episodes - 1)
 
         # training loop
-        for ep in range(episodes):
+        tbar = trange(episodes, desc="Training DQN Agent", disable=not logs)
+        for ep in tbar:
             obs = env.reset()
             state = torch.tensor(obs, dtype=torch.float32).to(device)
             total_reward = 0.0
@@ -124,7 +129,9 @@ class DQNTrainingModel:
 
             # When logs is selecting, print all kinds of logs
             if(logs):
-                print(f"Episode {ep:4d} | Reward: {total_reward: 6.2f} | Epsilon: {epsilon: .3f} | Buffer size: {len(memory): .0f} | Device: {device}")
+                tbar.set_description(
+                    f"Training DQN Agent | Episode {ep:4d} | Reward: {total_reward: 6.2f} | Epsilon: {epsilon: .3f} | Device: {device}"
+                )
 
             if(total_reward > best_reward):
                 best_reward = total_reward
@@ -151,14 +158,11 @@ class DQNTrainingModel:
             plt.show()
 
 
-
-
-
-
 if __name__ == "__main__":
     args = parse_args()
     trainer = DQNTrainingModel()
     trainer.train(
+        detect_range=args.detect_range,
         episodes=args.episodes,
         steps=args.steps,
         seed=args.random_seed,
