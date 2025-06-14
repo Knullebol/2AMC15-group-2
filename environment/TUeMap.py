@@ -57,9 +57,7 @@ def draw_TUe_map(pygame: pygame, screen: pygame.Surface):
         sy = int(HEIGHT - (y - miny) / (maxy - miny) * HEIGHT)
         return sx, sy
 
-    pygame.init()
-    screen = pygame.display.set_mode((WIDTH, HEIGHT))
-    pygame.display.set_caption("TU/e Map")
+    screen = pygame.Surface((WIDTH, HEIGHT))
     screen.fill(BG_COLOR)
 
     # Draw buildings first

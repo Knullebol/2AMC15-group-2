@@ -50,7 +50,6 @@ class TUeMapEnv(gym.Env):
         self.screen = None
 
         # Cache map_surface and access_mask in __init__
-        pygame.init()
         self.map_surface = draw_TUe_map(pygame, None)
 
         # Create access_mask
@@ -88,7 +87,6 @@ class TUeMapEnv(gym.Env):
         # Map surface and access mask are now cached in __init__
         # This method is kept for backward compatibility
         if self.map_surface is None:
-            pygame.init()
             self.map_surface = draw_TUe_map(pygame, None)
 
             map_pixels = pygame.surfarray.array3d(self.map_surface)  # shape: (width, height, 3)
@@ -290,7 +288,7 @@ class TUeMapEnv(gym.Env):
 
     def plot_map_with_path(self, path: Optional[list] = None, is_training: bool = False):
         """
-        Visualize the TUe map, path, and delivery points using matplotlib.
+        Visualize the TUe map, path, and delivery point using matplotlib.
         Matplotlib is of higher resolution in comparison to pygame.
         """
         # Skip plotting during training to improve performance
