@@ -15,8 +15,6 @@ import matplotlib.pyplot as plt
 
 def parse_args():
     p = ArgumentParser(description="DIC Reinforcement Learning Trainer.")
-    p.add_argument("--detect_range", type=int, default=10,
-                   help="Squared sensor range of the agent.")
     p.add_argument("--episodes", type=int, default=1000,
                    help="Number of episodes to go through.")
     p.add_argument("--steps", type=int, default=100,
@@ -40,10 +38,11 @@ class DQNTrainingModel:
         self.epsilon_init = hyperparams['epsilon_init']
         self.epsilon_min = hyperparams['epsilon_min']
         self.gamma = hyperparams['gamma']
+        self.detect_range = hyperparams['detect_range']
         self.repMemSize = hyperparams['repMemSize']
         self.target_sync_freq = hyperparams['target_sync_freq']
 
-    def train(self, detect_range: int, episodes: int, steps: int, seed: int, logs: bool, use_distance: bool):
+    def train(self, episodes: int, steps: int, seed: int, logs: bool, use_distance: bool):
 
         # use gpu if available
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -52,7 +51,7 @@ class DQNTrainingModel:
         np.random.seed(seed)
 
         raw_env = TUeMapEnv(
-            detect_range=detect_range,
+            detect_range=self.detect_range,
             goal_threshold=15.0,
             max_steps=steps,
             use_distance=use_distance
@@ -186,7 +185,6 @@ if __name__ == "__main__":
     args = parse_args()
     trainer = DQNTrainingModel()
     trainer.train(
-        detect_range=args.detect_range,
         episodes=args.episodes,
         steps=args.steps,
         seed=args.random_seed,

@@ -4,6 +4,7 @@ epsilon_init: 1
 epsilon_min: 0.1
 gamma: 0.9
 repMemSize: 10000
+detect_range: 10
 # How often to update the target network, hardcoded value from previous train_dqn.py,
 # moved to hyperparams.yml to make it configurable
 target_sync_freq: 20
