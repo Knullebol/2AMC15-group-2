@@ -24,7 +24,7 @@ class TUeMapEnv(gym.Env):
     A gymnasium continuous environment that simulates delivery tasks on the TU/e campus.
     """
 
-    def __init__(self, detect_range: int, goal_threshold: float, max_steps: int=DEFAULT_MAX_STEPS, use_distance: bool=False):
+    def __init__(self, detect_range: int, goal_threshold: float, max_steps: int=DEFAULT_MAX_STEPS, use_distance: bool=False, use_direction: bool=False):
         """
         Initializes the TUeMap environment.
         Args:
@@ -38,6 +38,7 @@ class TUeMapEnv(gym.Env):
         self.max_steps = max_steps
         self.steps_count = 0
         self.use_distance = use_distance
+        self.use_direction = use_direction
 
         # Action: 0=forward, 1=turn left, 2=turn right
         self.action_space = spaces.Discrete(3)
@@ -194,6 +195,12 @@ class TUeMapEnv(gym.Env):
         goal = np.array(self.delivery_point)
         distance_before = np.linalg.norm(agent_pos - goal)
 
+        # Compute angle to goal before action
+        vector_agent_before = np.array([np.cos(theta), np.sin(theta)]) # Unit vector
+        vector_goal_before = goal - agent_pos
+        length_vector = np.linalg.norm(vector_goal_before)
+        vector_goal_before = vector_goal_before / length_vector # Make unit vector
+
         # Apply action
         if action == 0:
             # Move forward
@@ -257,7 +264,21 @@ class TUeMapEnv(gym.Env):
             current_goal = np.array(self.delivery_point)
             distance_after = np.linalg.norm(agent_pos - current_goal)
             reward += (distance_before - distance_after) * 1.0
-        
+
+        # ====== Direction-based reward ======
+        # Calculate agent angle to goal (using vectors)
+        # Only if set to True
+        if(self.use_direction):
+            agent_pos = self.state[:2]
+            vector_agent_after = np.array([np.cos(ntheta), np.sin(ntheta)]) # Unit vector
+            vector_goal_after = goal - agent_pos
+            length_vector = np.linalg.norm(vector_goal_after)
+            vector_goal_after = vector_goal_after / length_vector # Make unit vector
+
+            angle_before = np.arccos(np.dot(vector_agent_before, vector_goal_before))
+            angle_after = np.arccos(np.dot(vector_agent_after, vector_goal_after))
+            reward += (angle_before - angle_after) * 1.0
+
         # ====== Penalty for staying in place too long ======
         
 

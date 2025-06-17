@@ -24,7 +24,9 @@ def parse_args():
     p.add_argument("--logs", action="store_true",
                    help="Print logs of the agent")
     p.add_argument("--use_distance", action="store_true",
-                   help="Allows the use of distance based rewards")
+                   help="Enables distance based rewards")
+    p.add_argument("--use_direction", action="store_true",
+                   help="Enables direction based rewards")
     return p.parse_args()
 
 
@@ -42,7 +44,7 @@ class DQNTrainingModel:
         self.repMemSize = hyperparams['repMemSize']
         self.target_sync_freq = hyperparams['target_sync_freq']
 
-    def train(self, episodes: int, steps: int, seed: int, logs: bool, use_distance: bool):
+    def train(self, episodes: int, steps: int, seed: int, logs: bool, use_distance: bool, use_direction: bool):
 
         # use gpu if available
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -54,7 +56,8 @@ class DQNTrainingModel:
             detect_range=self.detect_range,
             goal_threshold=15.0,
             max_steps=steps,
-            use_distance=use_distance
+            use_distance=use_distance,
+            use_direction=use_direction
         )
         wrapper = EnvWrapper(raw_env, is_gym_env=True, seed=seed)
         env = wrapper
@@ -82,6 +85,8 @@ class DQNTrainingModel:
         best_episode_goal_reached = False
         best_episode_goal_steps = float('inf')
         num_goal_reached = 0
+        num_actions = [0] * action_dim
+        num_steps = 0
 
         epsilon = self.epsilon_init
         epsilon_delta = (self.epsilon_init - self.epsilon_min) / (episodes - 1)
@@ -126,6 +131,10 @@ class DQNTrainingModel:
                     loss.backward()
                     optimizer.step()
 
+                # Update number of actions and steps, keep track of how many time each action was done
+                num_actions[action] += 1
+                num_steps += 1
+
                 # It only terminates if the agent reaches the goal
                 if(terminated):
                     num_goal_reached += 1
@@ -168,9 +177,11 @@ class DQNTrainingModel:
         if(logs):
             average_reward = sum(all_rewards) / episodes
 
-            print(f"\n***********\n* Summary *\n***********\nBest episode:{best_episode: .0f} | Reward:{best_reward: 6.2f}")
+            print(f"\n***********\n* Summary *\n***********\nBest episode:{best_episode: .0f} | Reward: {best_reward: 6.2f}")
             print(f"Goal reached this episode: {best_episode_goal_reached}, in{best_episode_goal_steps: .0f} steps.")
-            print(f"\nTotal times goal reached:{num_goal_reached: .0f} | Average reward:{average_reward: 6.2f} ")
+            print(f"\nTotal times goal reached:{num_goal_reached: .0f} | Average reward: {average_reward: 6.2f} ")
+            for i in range(action_dim):
+                print(f"Action {i + 1}: chosen {num_actions[i]} times ({(num_actions[i]/num_steps) * 100: .2f}% )")
 
             # show path at the end
             raw_env.plot_map_with_path(best_path, is_training=False)
@@ -189,5 +200,6 @@ if __name__ == "__main__":
         steps=args.steps,
         seed=args.random_seed,
         logs=args.logs,
-        use_distance=args.use_distance
+        use_distance=args.use_distance,
+        use_direction=args.use_direction
     )
