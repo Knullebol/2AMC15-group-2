@@ -1,8 +1,8 @@
 replay_memory_size: 100000 # Unused in (previous) implementation
 mini_batch_size: 32
-epsilon_init: 1
+epsilon_init: 0.9
 epsilon_min: 0.1
-gamma: 0.9
+gamma: 1
 repMemSize: 10000
 detect_range: 10
 # How often to update the target network, hardcoded value from previous train_dqn.py,

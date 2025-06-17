@@ -17,14 +17,21 @@ REWARD_STEP = -0.5           # Penalty for each step taken
 REWARD_OBSTACLE = -4.0       # Penalty for hitting an obstacle
 REWARD_GOAL = 250.0          # Reward for reaching the goal
 DEFAULT_MAX_STEPS = 5000     # Maximum steps for an episode
-
+REWARD_STALLING = -2         # Penalty for staying near a single spot.
+STALLING_DISTANCE = 3       # Maximum distance from average last STALLING_MEMORY locations visited, to be considered stalling.
+STALLING_MEMORY = 25         # Number of last visited coordinates to remember for stalling.
 
 class TUeMapEnv(gym.Env):
     """
     A gymnasium continuous environment that simulates delivery tasks on the TU/e campus.
     """
 
-    def __init__(self, detect_range: int, goal_threshold: float, max_steps: int=DEFAULT_MAX_STEPS, use_distance: bool=False, use_direction: bool=False):
+    def __init__(self, detect_range: int,
+                 goal_threshold: float,
+                 max_steps: int=DEFAULT_MAX_STEPS,
+                 use_distance: bool=False,
+                 use_direction: bool=False,
+                 use_stalling: bool=False):
         """
         Initializes the TUeMap environment.
         Args:
@@ -39,6 +46,7 @@ class TUeMapEnv(gym.Env):
         self.steps_count = 0
         self.use_distance = use_distance
         self.use_direction = use_direction
+        self.use_stalling = use_stalling
 
         # Action: 0=forward, 1=turn left, 2=turn right
         self.action_space = spaces.Discrete(3)
@@ -51,6 +59,7 @@ class TUeMapEnv(gym.Env):
         )
         self.screen = None
 
+        self.recent_location_memory = [SPAR_LOCATION]
         # Cache map_surface and access_mask in __init__
         self.map_surface = draw_TUe_map(pygame, None)
 
@@ -116,7 +125,7 @@ class TUeMapEnv(gym.Env):
 
         # Reset step counter
         self.steps_count = 0
-
+        self.recent_location_memory = [SPAR_LOCATION]
         # Set agent's start position to fixed SPAR location
         px, py = SPAR_LOCATION
         self.state = np.array([px, py, -np.pi], dtype=np.float32)
@@ -298,6 +307,23 @@ class TUeMapEnv(gym.Env):
 
         self.path.append(self.state[:2].copy())
         obs = self.make_feature_from_sensor(self.detect_range)
+
+        #===== Stalling ======
+        if self.use_stalling:
+            newX = self.state[0]
+            newY = self.state[1]
+            #Append the new location to memory
+            self.recent_location_memory.append((newX, newY))
+            #Calculate the average point across all remembered last-visited points.
+            averageVisited = np.mean(self.recent_location_memory, axis=0)
+            distanceFromAverage = np.sqrt((averageVisited[0] - newX)**2 + (averageVisited[1] - newY)**2)
+            #If our new position is not far away enough from the average point, punish the agent.
+            if (distanceFromAverage <= STALLING_DISTANCE):
+                reward += REWARD_STALLING
+            
+            #Only keep track of STALLING_MEMORY number of previous positions.
+            if (len(self.recent_location_memory) >= STALLING_MEMORY):
+                self.recent_location_memory.pop(0) 
 
         return obs, reward, terminated, truncated, {}
 

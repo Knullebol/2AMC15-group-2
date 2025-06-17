@@ -27,6 +27,8 @@ def parse_args():
                    help="Enables distance based rewards")
     p.add_argument("--use_direction", action="store_true",
                    help="Enables direction based rewards")
+    p.add_argument("--use_stalling", action="store_true",
+                help="Enables passive punishment for staying in one area too long.")
     return p.parse_args()
 
 
@@ -44,7 +46,7 @@ class DQNTrainingModel:
         self.repMemSize = hyperparams['repMemSize']
         self.target_sync_freq = hyperparams['target_sync_freq']
 
-    def train(self, episodes: int, steps: int, seed: int, logs: bool, use_distance: bool, use_direction: bool):
+    def train(self, episodes: int, steps: int, seed: int, logs: bool, use_distance: bool, use_direction: bool, use_stalling: bool):
 
         # use gpu if available
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -57,7 +59,8 @@ class DQNTrainingModel:
             goal_threshold=15.0,
             max_steps=steps,
             use_distance=use_distance,
-            use_direction=use_direction
+            use_direction=use_direction,
+            use_stalling=use_stalling
         )
         wrapper = EnvWrapper(raw_env, is_gym_env=True, seed=seed)
         env = wrapper
@@ -120,7 +123,7 @@ class DQNTrainingModel:
                     A = torch.tensor(batch.action).unsqueeze(1).to(device)
                     R = torch.tensor(batch.reward, dtype=torch.float32).to(device)
                     S2 = torch.stack(batch.next_state).to(device)
-
+                    
                     Q = policy_net(S).gather(1, A).squeeze()
                     with torch.no_grad():
                         Q2 = target_net(S2).max(1)[0]
@@ -201,5 +204,6 @@ if __name__ == "__main__":
         seed=args.random_seed,
         logs=args.logs,
         use_distance=args.use_distance,
-        use_direction=args.use_direction
+        use_direction=args.use_direction,
+        use_stalling=args.use_stalling
     )
