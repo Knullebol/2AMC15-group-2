@@ -25,6 +25,8 @@ def parse_args():
                    help="Random seed value for the environment.")
     p.add_argument("--logs", action="store_true",
                    help="Print logs of the agent")
+    p.add_argument("--use_distance", action="store_true",
+                   help="Allows the use of distance based rewards")
     return p.parse_args()
 
 
@@ -41,7 +43,7 @@ class DQNTrainingModel:
         self.repMemSize = hyperparams['repMemSize']
         self.target_sync_freq = hyperparams['target_sync_freq']
 
-    def train(self, detect_range: int, episodes: int, steps: int, seed: int, logs: bool):
+    def train(self, detect_range: int, episodes: int, steps: int, seed: int, logs: bool, use_distance: bool):
 
         # use gpu if available
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -52,7 +54,8 @@ class DQNTrainingModel:
         raw_env = TUeMapEnv(
             detect_range=detect_range,
             goal_threshold=15.0,
-            max_steps=steps
+            max_steps=steps,
+            use_distance=use_distance
         )
         wrapper = EnvWrapper(raw_env, is_gym_env=True, seed=seed)
         env = wrapper
@@ -77,6 +80,9 @@ class DQNTrainingModel:
         best_reward = float('-inf')
         best_episode = 0
         best_path = None
+        best_episode_goal_reached = False
+        best_episode_goal_steps = float('inf')
+        num_goal_reached = 0
 
         epsilon = self.epsilon_init
         epsilon_delta = (self.epsilon_init - self.epsilon_min) / (episodes - 1)
@@ -95,7 +101,7 @@ class DQNTrainingModel:
                     with torch.no_grad():
                         action = policy_net(state).argmax().item()
 
-                next_obs, reward, done, _ = env.step(action)
+                next_obs, reward, terminated, truncated, _ = env.step(action)
                 next_state = torch.tensor(next_obs, dtype=torch.float32).to(device)
 
                 memory.append(state, action, next_state, reward)
@@ -121,22 +127,36 @@ class DQNTrainingModel:
                     loss.backward()
                     optimizer.step()
 
-                if done:
+                # It only terminates if the agent reaches the goal
+                if(terminated):
+                    num_goal_reached += 1
+
+                if(terminated or truncated):
                     break
 
             if ep % self.target_sync_freq == 0:
                 target_net.load_state_dict(policy_net.state_dict())
 
-            # When logs is selecting, print all kinds of logs
+            # When logs is selected, print all kinds of logs
             if(logs):
                 tbar.set_description(
-                    f"Training DQN Agent | Episode {ep:4d} | Reward: {total_reward: 6.2f} | Epsilon: {epsilon: .3f} | Device: {device}"
+                    f"Training DQN Agent | Episode {ep:4d} | Reward: {total_reward: 6.2f} | Epsilon: {epsilon: .3f} | Device: {device} |"
                 )
 
+            # Update the best performing episode
             if(total_reward > best_reward):
                 best_reward = total_reward
                 best_episode = ep
                 best_path = raw_env.path
+
+                # Reached goal
+                if(terminated):
+                    best_episode_goal_reached = True
+                    best_episode_goal_steps = t
+                else:
+                    best_episode_goal_reached = False
+                    best_episode_goal_steps = float('inf')
+
 
             # Linear epsilon that decays to the min (per step, NOT per episode)
             epsilon -= epsilon_delta
@@ -147,7 +167,11 @@ class DQNTrainingModel:
 
         # summary logs
         if(logs):
-            print(f"\n***********\n* Summary *\n*********** \n Best episode: {best_episode: .0f} | Reward: {best_reward: 6.2f}")
+            average_reward = sum(all_rewards) / episodes
+
+            print(f"\n***********\n* Summary *\n***********\nBest episode:{best_episode: .0f} | Reward:{best_reward: 6.2f}")
+            print(f"Goal reached this episode: {best_episode_goal_reached}, in{best_episode_goal_steps: .0f} steps.")
+            print(f"\nTotal times goal reached:{num_goal_reached: .0f} | Average reward:{average_reward: 6.2f} ")
 
             # show path at the end
             raw_env.plot_map_with_path(best_path, is_training=False)
@@ -166,5 +190,6 @@ if __name__ == "__main__":
         episodes=args.episodes,
         steps=args.steps,
         seed=args.random_seed,
-        logs=args.logs
+        logs=args.logs,
+        use_distance=args.use_distance
     )

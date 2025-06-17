@@ -24,7 +24,7 @@ class TUeMapEnv(gym.Env):
     A gymnasium continuous environment that simulates delivery tasks on the TU/e campus.
     """
 
-    def __init__(self, detect_range: int, goal_threshold: float, max_steps: int=DEFAULT_MAX_STEPS):
+    def __init__(self, detect_range: int, goal_threshold: float, max_steps: int=DEFAULT_MAX_STEPS, use_distance: bool=False):
         """
         Initializes the TUeMap environment.
         Args:
@@ -37,6 +37,7 @@ class TUeMapEnv(gym.Env):
         self.rng = np.random.default_rng()
         self.max_steps = max_steps
         self.steps_count = 0
+        self.use_distance = use_distance
 
         # Action: 0=forward, 1=turn left, 2=turn right
         self.action_space = spaces.Discrete(3)
@@ -250,10 +251,12 @@ class TUeMapEnv(gym.Env):
 
         # ====== Distance-based reward ======
         # Calculate distance to goal after action
-        agent_pos = self.state[:2]
-        current_goal = np.array(self.delivery_point)
-        distance_after = np.linalg.norm(agent_pos - current_goal)
-        reward += (distance_before - distance_after) * 1.0
+        # Only if set to True
+        if(self.use_distance):
+            agent_pos = self.state[:2]
+            current_goal = np.array(self.delivery_point)
+            distance_after = np.linalg.norm(agent_pos - current_goal)
+            reward += (distance_before - distance_after) * 1.0
         
         # ====== Penalty for staying in place too long ======
         

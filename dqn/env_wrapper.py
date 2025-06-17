@@ -54,14 +54,16 @@ class EnvWrapper:
         # grid-env step (obs, reward, done) or (obs, reward, done, info)
         # gym-env step (obs, reward, term, trunc, info)
         if len(res) == 3:
-            obs, reward, done = res
+            obs, reward, terminated = res
+            truncated = False
             info = {}
         elif len(res) == 4:
-            obs, reward, done, info = res
+            obs, reward, terminated, info = res
+            truncated = False
         else:
-            obs, reward, term, trunc, info = res
-            done = bool(term or trunc)
-        return obs, reward, done, info
+            obs, reward, terminated, truncated, info = res
+            #done = bool(term or trunc)
+        return obs, reward, terminated, truncated, info
 
     def close(self):
         return getattr(self.env, "close", lambda: None)()
