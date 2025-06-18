@@ -1,7 +1,6 @@
 from argparse import ArgumentParser
 from dqn.dqn_agent import DQN
 from dqn.experience_replay import ReplayMemory, Transition
-from dqn.env_wrapper import EnvWrapper
 from environment.gym import TUeMapEnv
 from tqdm import trange
 
@@ -54,7 +53,7 @@ class DQNTrainingModel:
         torch.manual_seed(seed)
         np.random.seed(seed)
 
-        raw_env = TUeMapEnv(
+        env = TUeMapEnv(
             detect_range=self.detect_range,
             goal_threshold=15.0,
             max_steps=steps,
@@ -62,8 +61,6 @@ class DQNTrainingModel:
             use_direction=use_direction,
             use_stalling=use_stalling
         )
-        wrapper = EnvWrapper(raw_env, is_gym_env=True, seed=seed)
-        env = wrapper
 
         # dynamic dimensions - no more hardcoded values
         state_dim = env.observation_space.shape[0]
@@ -97,7 +94,7 @@ class DQNTrainingModel:
         # training loop
         tbar = trange(episodes, desc="Training DQN Agent", disable=not logs)
         for ep in tbar:
-            obs = env.reset()
+            obs, _ = env.reset()
             state = torch.tensor(obs, dtype=torch.float32).to(device)
             total_reward = 0.0
 
@@ -158,7 +155,7 @@ class DQNTrainingModel:
             if(total_reward > best_reward):
                 best_reward = total_reward
                 best_episode = ep
-                best_path = raw_env.path
+                best_path = env.path
 
                 # Reached goal
                 if(terminated):
@@ -187,7 +184,7 @@ class DQNTrainingModel:
                 print(f"Action {i + 1}: chosen {num_actions[i]} times ({(num_actions[i]/num_steps) * 100: .2f}% )")
 
             # show path at the end
-            raw_env.plot_map_with_path(best_path, is_training=False)
+            env.plot_map_with_path(best_path, is_training=False)
 
             # plot the rewards
             x = list(range(episodes))

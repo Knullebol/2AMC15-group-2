@@ -284,8 +284,9 @@ class TUeMapEnv(gym.Env):
             length_vector = np.linalg.norm(vector_goal_after)
             vector_goal_after = vector_goal_after / length_vector # Make unit vector
 
-            angle_before = np.arccos(np.dot(vector_agent_before, vector_goal_before))
-            angle_after = np.arccos(np.dot(vector_agent_after, vector_goal_after))
+            # Compute the actual angles (and use clipping to make sure it does not result in NaN's)
+            angle_before = np.arccos(np.clip(np.dot(vector_agent_before, vector_goal_before), -1.0, 1.0))
+            angle_after = np.arccos(np.clip(np.dot(vector_agent_after, vector_goal_after), -1.0, 1.0))
             reward += (angle_before - angle_after) * 1.0
 
         # ====== Penalty for staying in place too long ======
