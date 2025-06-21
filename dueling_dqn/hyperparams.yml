@@ -1,10 +1,10 @@
 # Experience replay
 replay_memory_size:   10000   # capacity of the ReplayBuffer
-mini_batch_size:      64      # batch size for sampling
+mini_batch_size:      32      # batch size for sampling
 
 # ϵ-greedy schedule
-epsilon_init:         0.95     # starting epsilon
-epsilon_min:          0.2     # final epsilon
+epsilon_init:         0.99     # starting epsilon
+epsilon_min:          0.1     # final epsilon
 
 # Discounting & environment
 gamma:                1.0     # reward discount factor

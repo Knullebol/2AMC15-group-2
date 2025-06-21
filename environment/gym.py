@@ -14,15 +14,16 @@ SPAR_LOCATION = (182, 60)    # Agent starting position
 AUDI_LOCATION = (66, 123)    # Delivery point coordinates
 MARKTHAL_LOCATION = (200, 174)
 NEXUS_LOCATION = (321, 217)
-EASY_LOCATION = (163, 122)
+EASY_LOCATION = (163, 98)
+DESTINATIONS = [EASY_LOCATION, MARKTHAL_LOCATION, AUDI_LOCATION, NEXUS_LOCATION]
 
 FORWARD_SPEED = 6            # Speed in pixels per step
 DEGREE_PER_STEP = 15         # Degrees to turn per step
 REWARD_STEP = -0.1           # Penalty for each step taken
 REWARD_OBSTACLE = -1.0       # Penalty for hitting an obstacle
 REWARD_GOAL = 5.0          # Reward for reaching the goal
-DEFAULT_MAX_STEPS = 5000     # Maximum steps for an episode
-REWARD_STALLING = -1.0        # Penalty for staying near a single spot.
+DEFAULT_MAX_STEPS = 300     # Maximum steps for an episode
+REWARD_STALLING = -0.1        # Penalty for staying near a single spot.
 STALLING_DISTANCE = 3        # Maximum distance from average last STALLING_MEMORY locations visited, to be considered stalling.
 STALLING_MEMORY = 25         # Number of last visited coordinates to remember for stalling.
 
@@ -33,10 +34,12 @@ class TUeMapEnv(gym.Env):
 
     def __init__(self, detect_range: int,
                  goal_threshold: float,
-                 max_steps: int=DEFAULT_MAX_STEPS,
-                 use_distance: bool=False,
-                 use_direction: bool=False,
-                 use_stalling: bool=False):
+                 max_steps: int = DEFAULT_MAX_STEPS,
+                 use_distance: bool = False,
+                 use_direction: bool = False,
+                 use_stalling: bool = False,
+                 destination: int = 1
+                 ):
         """
         Initializes the TUeMap environment.
         Args:
@@ -59,7 +62,7 @@ class TUeMapEnv(gym.Env):
         self.forward_speed = FORWARD_SPEED              # pixels per step
         self.turn_speed = np.deg2rad(DEGREE_PER_STEP)   # radians per step
 
-        self.delivery_point = MARKTHAL_LOCATION        # destination
+        self.delivery_point = DESTINATIONS[destination] # choose one destination
         self.goal_threshold = goal_threshold            # threshold radius to consider agent reached goal
   
         self.path = []                                  # Store the path taken by the agent
@@ -72,37 +75,26 @@ class TUeMapEnv(gym.Env):
             high=self.make_feature_from_sensor(detect_range=self.detect_range, mode='upper'),
         )
         
-        # Initialize pygame surface and mask color pixels
-        self.map_surface = draw_TUe_map(pygame, None)
-        map_pixels = pygame.surfarray.array3d(self.map_surface)  # shape: (width, height, 3)
-        map_pixels = map_pixels.transpose(2, 0, 1)  # shape: (3, width, height)
-        road_colors = [ROAD_COLOR, (180, 180, 180), (120, 120, 120)]
-        mask = np.zeros((self.width, self.height), dtype=bool)
-        for color in road_colors:
-            color_arr = np.array(color)[:, None, None]
-            matches = np.all(map_pixels == color_arr, axis=0)
-            mask = np.logical_or(mask, matches)
-        self.access_mask = mask.astype(np.uint8)
+        # Initialize pygame surface and mask accessible color pixels
+        self.map_surface, self.access_mask = self._preprocess_map()
 
     def _preprocess_map(self):
         """
         Mask buildings and roads to mark accessible areas and obstacles.
         """
-        # Map surface and access mask are now cached in __init__
-        # This method is kept for backward compatibility
-        if self.map_surface is None:
-            
-            self.map_surface = draw_TUe_map(pygame, None)
-            map_pixels = pygame.surfarray.array3d(self.map_surface)  # shape: (width, height, 3)
-            map_pixels = map_pixels.transpose(2, 0, 1)  # shape: (3, width, height)
-            road_colors = [ROAD_COLOR, (180, 180, 180), (120, 120, 120)]
-            mask = np.zeros((self.width, self.height), dtype=bool)
-            
-            for color in road_colors:
-                color_arr = np.array(color)[:, None, None]
-                matches = np.all(map_pixels == color_arr, axis=0)
-                mask = np.logical_or(mask, matches)
-            self.access_mask = mask.astype(np.uint8)
+        self.map_surface = draw_TUe_map(None)
+        map_pixels = pygame.surfarray.array3d(self.map_surface)
+        map_pixels = map_pixels.transpose(2, 0, 1)
+        road_colors = [ROAD_COLOR, (180, 180, 180), (120, 120, 120)]
+        mask = np.zeros((self.width, self.height), dtype=bool)
+        
+        for color in road_colors:
+            color_arr = np.array(color)[:, None, None]
+            matches = np.all(map_pixels == color_arr, axis=0)
+            mask = np.logical_or(mask, matches)
+        self.access_mask = mask.astype(np.uint8)
+        
+        return self.map_surface, self.access_mask
 
     def reset(self, seed: Optional[int] = None):
         """
@@ -118,7 +110,8 @@ class TUeMapEnv(gym.Env):
         
         # Set agent's start position to fixed SPAR location
         px, py = SPAR_LOCATION
-        self.state = np.array([px, py, -np.pi], dtype=np.float32)
+        theta_init = np.deg2rad(-180)
+        self.state = np.array([px, py, theta_init], dtype=np.float32)
         self.path = [self.state[:2].copy()]
 
         # Create observation based on state, angle and sensoring area
@@ -334,60 +327,60 @@ class TUeMapEnv(gym.Env):
             return
         
         path_width = 2
-        point_size = 100
+        point_size = 70
         point_border = 6
-
-        if self.map_surface is None:
-            self._preprocess_map()
-
-        # Get map pixels (RGB)
-        map_pixels = pygame.surfarray.array3d(self.map_surface)  # (width, height, 3)
-
-        # Transpose to (height, width, 3) for matplotlib
+        font_size = 8
+        amplify = 1.05
+        plot_size = (8 * amplify, 6 * amplify)
+        fig, ax = plt.subplots(figsize=plot_size, dpi=150)
+        plt.rcParams['font.family'] = 'Calibri'
+        
+        map_pixels = pygame.surfarray.array3d(self.map_surface)
         map_pixels = np.transpose(map_pixels, (1, 0, 2))
-
-        fig, ax = plt.subplots(figsize=(14, 8))
         ax.imshow(map_pixels)
 
         # Plot agent path (red)
         if path is not None and len(path) > 1:
             px = [point[0] for point in path]
             py = [point[1] for point in path]
-            ax.plot(px, py, color='red', linewidth=path_width, label='Agent Path')
+            ax.plot(px, py, color='#FF6666', linewidth=path_width, label='Agent Path')
 
         # Plot the delivery point
         if self.delivery_point is not None:
+            goal_color = "#009900"
             ax.scatter(
                 [self.delivery_point[0]], [self.delivery_point[1]],
-                s=point_size, c='blue', marker='o',
-                edgecolors='black', linewidths=1,
+                s=point_size, c=goal_color, marker='o',
+                edgecolors='#003300', linewidths=1,
                 zorder=point_border, label='Delivery point'
             )
             # Draw a transparent circle around the delivery point
             circle = plt.Circle(
                 self.delivery_point, self.goal_threshold,
-                color='blue', alpha=0.2, fill=True, zorder=point_border
+                color=goal_color, alpha=0.2, fill=True, zorder=point_border
             )
             ax.add_artist(circle)
                 
         # Plot start point (orange)
         if path is not None and len(path) > 0:
             ax.scatter([path[0][0]], [path[0][1]], s=point_size, c='orange', marker='o',
-                       edgecolors='black', zorder=point_border, label='Start')
+                       edgecolors='#663300', zorder=point_border, label='Start')
 
         building_coors_dict = Buildings.building_coors
+        building_coors_dict['SPAR'] = (191, 52)
         for name, (bx, by) in building_coors_dict.items():
             if not isinstance(name, float):
                 ax.text(
-                    bx, by, name, fontsize=10, color='white', ha='center', va='center', weight='bold',
-                    path_effects=[effects.Stroke(linewidth=1, foreground='black'), effects.Normal()]
+                    bx, by, name, fontsize=font_size, color='black', ha='center', va='center', weight='semibold',
+                    path_effects=[effects.Stroke(linewidth=1, foreground='white'), effects.Normal()]
                 )
+                
         ax.axis('off')
         ax.set_xlim(0, self.width)
         ax.set_ylim(self.height, 0)
         ax.set_aspect('equal')
-        ax.set_title('Data Intelligence Challenge - TU/e SPAR Delivery')
-        ax.legend()
+        ax.set_title('Data Intelligence Challenge - TU/e SPAR Delivery', fontsize=9, weight='semibold')
+        ax.legend(fontsize=font_size)
         plt.tight_layout()
         plt.show()
 

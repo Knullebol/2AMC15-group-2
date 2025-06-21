@@ -28,6 +28,8 @@ def parse_args():
                    help="Enables direction based rewards")
     p.add_argument("--use_stalling", action="store_true",
                 help="Enables passive punishment for staying in one area too long.")
+    p.add_argument("--destination", type=int, default=1,
+                   help="Target building to deliver to. 0=Easy, 1=Markthal, 2=Auditorium, 3=Nexus")
     return p.parse_args()
 
 
@@ -45,7 +47,16 @@ class DQNTrainingModel:
         self.repMemSize = hyperparams['repMemSize']
         self.target_sync_freq = hyperparams['target_sync_freq']
 
-    def train(self, episodes: int, steps: int, seed: int, logs: bool, use_distance: bool, use_direction: bool, use_stalling: bool):
+    def train(self, 
+              episodes: int, 
+              steps: int, 
+              seed: int, 
+              logs: bool, 
+              use_distance: bool, 
+              use_direction: bool, 
+              use_stalling: bool,
+              destination: int,
+              ):
 
         # use gpu if available
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -59,7 +70,8 @@ class DQNTrainingModel:
             max_steps=steps,
             use_distance=use_distance,
             use_direction=use_direction,
-            use_stalling=use_stalling
+            use_stalling=use_stalling,
+            destination=destination
         )
 
         # dynamic dimensions - no more hardcoded values
@@ -202,5 +214,6 @@ if __name__ == "__main__":
         logs=args.logs,
         use_distance=args.use_distance,
         use_direction=args.use_direction,
-        use_stalling=args.use_stalling
+        use_stalling=args.use_stalling,
+        destination=args.destination
     )

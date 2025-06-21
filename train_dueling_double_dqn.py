@@ -26,6 +26,8 @@ def parse_args():
                    help="Enable direction-based rewards.")
     p.add_argument("--use_stalling", action="store_true",
                    help="Enable stalling penalty.")
+    p.add_argument("--destination", type=int, default=1,
+                   help="Target building to deliver to. 0=Easy, 1=Markthal, 2=Auditorium, 3=Nexus")
     return p.parse_args()
 
 
@@ -49,7 +51,7 @@ class DuelingDoubleDQNTrainingModel:
         self.dueling_type = str(params.get('dueling_type', 'average'))
 
     def train(self, episodes, steps, seed, logs,
-              use_distance, use_direction, use_stalling):
+              use_distance, use_direction, use_stalling, destination):
         # set device and seeds
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         torch.manual_seed(seed)
@@ -62,7 +64,8 @@ class DuelingDoubleDQNTrainingModel:
             max_steps=steps,
             use_distance=use_distance,
             use_direction=use_direction,
-            use_stalling=use_stalling
+            use_stalling=use_stalling,
+            destination=destination,
         )
 
         # derive dimensions from first observation and action space
@@ -180,5 +183,6 @@ if __name__ == "__main__":
         logs=args.logs,
         use_distance=args.use_distance,
         use_direction=args.use_direction,
-        use_stalling=args.use_stalling
+        use_stalling=args.use_stalling,
+        destination=args.destination
     )

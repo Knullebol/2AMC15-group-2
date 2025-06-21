@@ -118,7 +118,12 @@ class DuelingDoubleDQNAgent:
 
     def select_action(self, state, epsilon=0.1):
         if random.random() < epsilon:
-            return random.randrange(self.policy_net.adv_out.out_features)
+            n_actions = self.policy_net.adv_out.out_features
+            prob_forward = 0.7
+            prob_turn = (1 - prob_forward) / (n_actions - 1)
+            probs = [prob_forward] + [prob_turn] * (n_actions - 1)
+            action = np.random.choice(n_actions, p=probs)
+            return action
         state = torch.FloatTensor(state).to(self.device).unsqueeze(0)
         with torch.no_grad():
             qvals = self.policy_net(state)
