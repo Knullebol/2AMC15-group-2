@@ -11,14 +11,19 @@ import matplotlib.patheffects as effects
 
 
 SPAR_LOCATION = (182, 60)    # Agent starting position
+AUDI_LOCATION = (66, 123)    # Delivery point coordinates
+MARKTHAL_LOCATION = (200, 174)
+NEXUS_LOCATION = (321, 217)
+EASY_LOCATION = (163, 122)
+
 FORWARD_SPEED = 6            # Speed in pixels per step
 DEGREE_PER_STEP = 15         # Degrees to turn per step
-REWARD_STEP = -0.5           # Penalty for each step taken
-REWARD_OBSTACLE = -4.0       # Penalty for hitting an obstacle
-REWARD_GOAL = 250.0          # Reward for reaching the goal
+REWARD_STEP = -0.1           # Penalty for each step taken
+REWARD_OBSTACLE = -1.0       # Penalty for hitting an obstacle
+REWARD_GOAL = 5.0          # Reward for reaching the goal
 DEFAULT_MAX_STEPS = 5000     # Maximum steps for an episode
-REWARD_STALLING = -2         # Penalty for staying near a single spot.
-STALLING_DISTANCE = 3       # Maximum distance from average last STALLING_MEMORY locations visited, to be considered stalling.
+REWARD_STALLING = -1.0        # Penalty for staying near a single spot.
+STALLING_DISTANCE = 3        # Maximum distance from average last STALLING_MEMORY locations visited, to be considered stalling.
 STALLING_MEMORY = 25         # Number of last visited coordinates to remember for stalling.
 
 class TUeMapEnv(gym.Env):
@@ -38,6 +43,9 @@ class TUeMapEnv(gym.Env):
             detect_range (int): The agent's squared detection range.
             goal_threshold (float): Distance threshold to consider agent reached goal (in pixels).
             max_steps (int): Maximum number of steps before truncation.
+            use_distance (bool): Whether to use distance-based rewards.
+            use_direction (bool): Whether to use direction-based rewards.
+            use_stalling (bool): Whether to use stalling-based rewards.
         """
         super(TUeMapEnv, self).__init__()
         self.width, self.height = WIDTH, HEIGHT
@@ -48,48 +56,33 @@ class TUeMapEnv(gym.Env):
         self.use_direction = use_direction
         self.use_stalling = use_stalling
 
-        # Action: 0=forward, 1=turn left, 2=turn right
-        self.action_space = spaces.Discrete(3)
+        self.forward_speed = FORWARD_SPEED              # pixels per step
+        self.turn_speed = np.deg2rad(DEGREE_PER_STEP)   # radians per step
 
-        # State: agent_x, agent_y, angle, sensor area
+        self.delivery_point = MARKTHAL_LOCATION        # destination
+        self.goal_threshold = goal_threshold            # threshold radius to consider agent reached goal
+  
+        self.path = []                                  # Store the path taken by the agent
+        self.recent_location_memory = [SPAR_LOCATION]   # Recent locations for stalling detection
+        
+        self.action_space = spaces.Discrete(3)          # Action: 0=forward, 1=turn left, 2=turn right
         self.detect_range = detect_range
-        self.observation_space = spaces.Box(
+        self.observation_space = spaces.Box(            # State: agent_x, agent_y, angle, sensor area
             low=self.make_feature_from_sensor(detect_range=self.detect_range, mode='lower'),
             high=self.make_feature_from_sensor(detect_range=self.detect_range, mode='upper'),
         )
-        self.screen = None
-
-        self.recent_location_memory = [SPAR_LOCATION]
-        # Cache map_surface and access_mask in __init__
+        
+        # Initialize pygame surface and mask color pixels
         self.map_surface = draw_TUe_map(pygame, None)
-
-        # Create access_mask
         map_pixels = pygame.surfarray.array3d(self.map_surface)  # shape: (width, height, 3)
         map_pixels = map_pixels.transpose(2, 0, 1)  # shape: (3, width, height)
-
         road_colors = [ROAD_COLOR, (180, 180, 180), (120, 120, 120)]
         mask = np.zeros((self.width, self.height), dtype=bool)
-
         for color in road_colors:
             color_arr = np.array(color)[:, None, None]
             matches = np.all(map_pixels == color_arr, axis=0)
             mask = np.logical_or(mask, matches)
-
         self.access_mask = mask.astype(np.uint8)
-
-        # Movement parameters
-        self.forward_speed = FORWARD_SPEED  # pixels per step
-        self.turn_speed = np.deg2rad(DEGREE_PER_STEP)  # radians per step
-
-        # Single delivery point (set in reset())
-        self.delivery_point = (66, 123)
-
-        # Minimum distance between agent start and goal (in pixels)
-        self.min_goal_distance = 100.0
-        self.goal_threshold = goal_threshold
-
-        # Store an agent's path
-        self.path = []
 
     def _preprocess_map(self):
         """
@@ -98,26 +91,22 @@ class TUeMapEnv(gym.Env):
         # Map surface and access mask are now cached in __init__
         # This method is kept for backward compatibility
         if self.map_surface is None:
+            
             self.map_surface = draw_TUe_map(pygame, None)
-
             map_pixels = pygame.surfarray.array3d(self.map_surface)  # shape: (width, height, 3)
             map_pixels = map_pixels.transpose(2, 0, 1)  # shape: (3, width, height)
-
             road_colors = [ROAD_COLOR, (180, 180, 180), (120, 120, 120)]
             mask = np.zeros((self.width, self.height), dtype=bool)
-
+            
             for color in road_colors:
                 color_arr = np.array(color)[:, None, None]
                 matches = np.all(map_pixels == color_arr, axis=0)
                 mask = np.logical_or(mask, matches)
-
             self.access_mask = mask.astype(np.uint8)
 
     def reset(self, seed: Optional[int] = None):
         """
-        Reset the environment with the agent at the SPAR location
-        and generate a single delivery point on a walkable tile that is at least
-        min_goal_distance pixels away from the start.
+        Reset the environment with the agent at the SPAR location.
         """
         super().reset(seed=seed)
         if seed is not None:
@@ -126,6 +115,7 @@ class TUeMapEnv(gym.Env):
         # Reset step counter
         self.steps_count = 0
         self.recent_location_memory = [SPAR_LOCATION]
+        
         # Set agent's start position to fixed SPAR location
         px, py = SPAR_LOCATION
         self.state = np.array([px, py, -np.pi], dtype=np.float32)
@@ -272,7 +262,7 @@ class TUeMapEnv(gym.Env):
             agent_pos = self.state[:2]
             current_goal = np.array(self.delivery_point)
             distance_after = np.linalg.norm(agent_pos - current_goal)
-            reward += (distance_before - distance_after) * 1.0
+            reward += (distance_before - distance_after) * 0.2
 
         # ====== Direction-based reward ======
         # Calculate agent angle to goal (using vectors)
@@ -288,10 +278,7 @@ class TUeMapEnv(gym.Env):
             angle_before = np.arccos(np.clip(np.dot(vector_agent_before, vector_goal_before), -1.0, 1.0))
             angle_after = np.arccos(np.clip(np.dot(vector_agent_after, vector_goal_after), -1.0, 1.0))
             reward += (angle_before - angle_after) * 1.0
-
-        # ====== Penalty for staying in place too long ======
-        
-
+            
         # ====== Reward for reaching the goal ======
         # Check if agent reached the goal
         at_goal = self._at_goal()
@@ -370,28 +357,18 @@ class TUeMapEnv(gym.Env):
 
         # Plot the delivery point
         if self.delivery_point is not None:
-            # Current goal (green)
-            if self._at_goal():
-                ax.scatter(
-                    [self.delivery_point[0]], [self.delivery_point[1]],
-                    s=point_size, c='green', marker='o',
-                    edgecolors='black', linewidths=1,
-                    zorder=point_border, label='Delivery point (Reached)'
-                )
-            else:
-                # Remaining goal (blue)
-                ax.scatter(
-                    [self.delivery_point[0]], [self.delivery_point[1]],
-                    s=point_size, c='blue', marker='o',
-                    edgecolors='black', linewidths=1,
-                    zorder=point_border, label='Delivery point'
-                )
-                # Draw a transparent circle around the delivery point
-                circle = plt.Circle(
-                    self.delivery_point, self.goal_threshold,
-                    color='blue', alpha=0.2, fill=True, zorder=point_border
-                )
-                ax.add_artist(circle)
+            ax.scatter(
+                [self.delivery_point[0]], [self.delivery_point[1]],
+                s=point_size, c='blue', marker='o',
+                edgecolors='black', linewidths=1,
+                zorder=point_border, label='Delivery point'
+            )
+            # Draw a transparent circle around the delivery point
+            circle = plt.Circle(
+                self.delivery_point, self.goal_threshold,
+                color='blue', alpha=0.2, fill=True, zorder=point_border
+            )
+            ax.add_artist(circle)
                 
         # Plot start point (orange)
         if path is not None and len(path) > 0:

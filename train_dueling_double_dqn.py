@@ -39,6 +39,9 @@ class DuelingDoubleDQNTrainingModel:
         self.gamma = float(params.get('gamma', 0.99))
         self.detect_range = float(params.get('detect_range', 10.0))
         self.buffer_capacity = int(params.get('replay_memory_size', 10000))
+        self.batch_size = int(params.get('mini_batch_size', 64))
+        self.epsilon_min = float(params.get('epsilon_min', 0.01))
+        
         self.target_update_freq = int(params.get('target_sync_freq', 1000))
         # optional DuelingDoubleDQN-specific
         self.hidden_dim = int(params.get('hidden_dim', 128))
@@ -95,7 +98,8 @@ class DuelingDoubleDQNTrainingModel:
 
         # epsilon decay schedule
         eps = self.epsilon_init
-        eps_decay = (self.epsilon_init - self.epsilon_min) / max(1, episodes - 1)
+        decay_episodes = int(episodes * 0.8)
+        eps_decay = (self.epsilon_init - self.epsilon_min) / max(1, decay_episodes)
 
         pbar = trange(episodes, desc='Training DuelingDoubleDQN', disable=not logs)
         for ep in pbar:
@@ -126,7 +130,11 @@ class DuelingDoubleDQNTrainingModel:
                     break
 
             # decay epsilon
-            eps = max(self.epsilon_min, eps - eps_decay)
+            # eps = max(self.epsilon_min, eps - eps_decay)
+            if ep < decay_episodes:
+                eps = max(self.epsilon_min, eps - eps_decay)
+            else:
+                eps = self.epsilon_min
 
             # verbose logging
             if logs:
@@ -137,7 +145,7 @@ class DuelingDoubleDQNTrainingModel:
             all_rewards.append(ep_reward)
             # track best performance
             if ep_reward > best_reward:
-                agent.save('best_model.pth')
+                agent.save('best_model_dueling.pth')
                 best_reward = ep_reward
                 best_episode = ep
                 best_path = env.path
