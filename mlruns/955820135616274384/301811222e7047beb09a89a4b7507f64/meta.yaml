@@ -1,0 +1,14 @@
+artifact_uri: /home/andrei/dataintelchallenge/mlruns/955820135616274384/301811222e7047beb09a89a4b7507f64/artifacts
+end_time: 1750605849070
+entry_point_name: ''
+experiment_id: '955820135616274384'
+lifecycle_stage: active
+run_id: 301811222e7047beb09a89a4b7507f64
+run_name: location_markthal
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1750605544238
+status: 3
+tags: []
+user_id: root

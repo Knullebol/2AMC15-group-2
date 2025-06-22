@@ -1,0 +1,14 @@
+artifact_uri: /home/andrei/dataintelchallenge/mlruns/955820135616274384/c3b82bdfe4d2412d9d9d91a8cbbf967d/artifacts
+end_time: 1750606294458
+entry_point_name: ''
+experiment_id: '955820135616274384'
+lifecycle_stage: active
+run_id: c3b82bdfe4d2412d9d9d91a8cbbf967d
+run_name: location_auditorium
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1750605851081
+status: 3
+tags: []
+user_id: root
