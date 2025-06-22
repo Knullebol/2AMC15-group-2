@@ -101,7 +101,7 @@ class DuelingDoubleDQNTrainingModel:
 
         # epsilon decay schedule
         eps = self.epsilon_init
-        decay_episodes = int(episodes * 0.8)
+        decay_episodes = int(episodes * 0.5)
         eps_decay = (self.epsilon_init - self.epsilon_min) / max(1, decay_episodes)
 
         pbar = trange(episodes, desc='Training DuelingDoubleDQN', disable=not logs)
