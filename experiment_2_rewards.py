@@ -1,7 +1,15 @@
-from experiment import run_dueling_dqn_experiment
+from experiment import run_dueling_dqn_experiment, run_dqn_experiment
+from argparse import ArgumentParser
 
 
-def run_reward_experiments():
+def parse_args():
+    parser = ArgumentParser(description="Reward Type Comparison Experiments")
+    parser.add_argument("--agent_type", type=str, choices=["dqn", "dueling_dqn"],
+                        required=True, help="Type of DQN agent to use")
+    return parser.parse_args()
+
+
+def run_reward_experiments(agent_type):
     base_config = {
         'episodes': 500,
         'max_steps': 200,
@@ -75,6 +83,7 @@ def run_reward_experiments():
     total_experiments = len(reward_configs)
 
     print(f"Starting Experiment 2: Reward Type Comparison")
+    print(f"Agent Type: {agent_type.upper()}")
     print(f"Total experiments to run: {total_experiments}")
     print(f"Location: Auditorium (destination=3)")
     print(f"Episodes: {base_config['episodes']}, Max Steps: {base_config['max_steps']}")
@@ -99,7 +108,9 @@ def run_reward_experiments():
                 'use_stalling': config['use_stalling']
             }
 
-            result = run_dueling_dqn_experiment(**experiment_config)
+            experiment_func = run_dueling_dqn_experiment if agent_type == "dueling_dqn" else run_dqn_experiment
+
+            result = experiment_func(**experiment_config)
 
             # Store results
             experiment_summary = {
@@ -170,4 +181,5 @@ def run_reward_experiments():
 
 
 if __name__ == "__main__":
-    run_reward_experiments()
+    args = parse_args()
+    run_reward_experiments(agent_type=args.agent_type)

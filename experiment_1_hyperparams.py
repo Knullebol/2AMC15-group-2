@@ -1,7 +1,15 @@
-from experiment import run_dueling_dqn_experiment
+from experiment import run_dueling_dqn_experiment, run_dqn_experiment
+from argparse import ArgumentParser
 
 
-def run_hyperparameter_experiments():
+def parse_args():
+    parser = ArgumentParser(description="Hyperparameter Tuning Experiments")
+    parser.add_argument("--agent_type", type=str, choices=["dqn", "dueling_dqn"],
+                        required=True, help="Type of DQN agent to use")
+    return parser.parse_args()
+
+
+def run_hyperparameter_experiments(agent_type):
     defaults = {
         'batch_size': 32,
         'memory_size': 10000,
@@ -29,6 +37,7 @@ def run_hyperparameter_experiments():
     total_experiments = sum(len(values) for _, values in parameter_studies)
 
     print(f"Starting Experiment 1: Hyperparameter Tuning")
+    print(f"Agent Type: {agent_type.upper()}")
     print(f"Total experiments to run: {total_experiments}")
     print(f"Location: Auditorium (destination=3)")
     print(f"Episodes: {base_config['episodes']}, Max Steps: {base_config['max_steps']}")
@@ -60,8 +69,10 @@ def run_hyperparameter_experiments():
                 # Create experiment name
                 name = f"hyperparam_{param_name}_{value}"
 
+                experiment_func = run_dueling_dqn_experiment if agent_type == "dueling_dqn" else run_dqn_experiment
+
                 # Run experiment
-                result = run_dueling_dqn_experiment(
+                result = experiment_func(
                     name=name,
                     batch_size=experiment_config['batch_size'],
                     memory_size=experiment_config['memory_size'],
@@ -156,4 +167,5 @@ def run_hyperparameter_experiments():
 
 
 if __name__ == "__main__":
-    run_hyperparameter_experiments()
+    args = parse_args()
+    run_hyperparameter_experiments(agent_type=args.agent_type)
