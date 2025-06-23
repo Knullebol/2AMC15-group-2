@@ -134,12 +134,12 @@ class DQNExperiment(BaseExperiment):
 
 
 def run_dqn_experiment(
-    batch_size: int = 64,
-    memory_size: int = 10000,
-    lr: float = 0.001,
+    batch_size: int = 32,
+    memory_size: int = 20000,
+    lr: float = 0.0005,
     detect_range: int = 4,
     episodes: int = 500,
-    max_steps: int = 200,
+    max_steps: int = 500,
     seed: int = 42,
     name: str = "dqn",
     **kwargs

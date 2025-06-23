@@ -1,0 +1,23 @@
+artifact_path: file:///C:/Users/20210894/OneDrive%20-%20TU%20Eindhoven/Documents/Year%201%20Master/Q4/2AMC15-group-2/mlruns/845626863360119010/models/m-ae4f645bd9554f25a773f8f8df121a88/artifacts
+flavors:
+  python_function:
+    config:
+      device: null
+    data: data
+    env:
+      conda: conda.yaml
+      virtualenv: python_env.yaml
+    loader_module: mlflow.pytorch
+    pickle_module_name: mlflow.pytorch.pickle_module
+    python_version: 3.10.2
+  pytorch:
+    code: null
+    model_data: data
+    pytorch_version: 2.6.0+cu118
+mlflow_version: 3.1.0
+model_id: m-ae4f645bd9554f25a773f8f8df121a88
+model_size_bytes: 181252
+model_uuid: m-ae4f645bd9554f25a773f8f8df121a88
+prompts: null
+run_id: 37f66e707b6141b78834bfb3a7a6399d
+utc_time_created: '2025-06-23 15:11:17.334169'

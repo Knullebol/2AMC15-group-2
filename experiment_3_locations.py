@@ -12,9 +12,9 @@ def parse_args():
 def run_location_experiments(agent_type):
     base_config = {
         'episodes': 500,
-        'max_steps': 200,
+        'max_steps': 200, #500 for dqn
         'batch_size': 32,
-        'memory_size': 10000,
+        'memory_size': 10000, #20000 for dqn
         'lr': 0.0005,
         'detect_range': 4,
         'use_distance': True,

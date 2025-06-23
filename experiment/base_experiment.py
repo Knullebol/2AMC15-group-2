@@ -139,7 +139,7 @@ class BaseExperiment(ABC):
         # Set tracking URI to base directory (not inside experiment_results)
         mlruns_path = Path("mlruns")
         mlruns_path.mkdir(exist_ok=True, parents=True)
-        mlflow.set_tracking_uri(str(mlruns_path.absolute()))
+        mlflow.set_tracking_uri(str(mlruns_path.absolute().as_uri()))
 
         mlflow.set_experiment(experiment_name)
 
