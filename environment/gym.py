@@ -49,6 +49,7 @@ class TUeMapEnv(gym.Env):
             use_distance (bool): Whether to use distance-based rewards.
             use_direction (bool): Whether to use direction-based rewards.
             use_stalling (bool): Whether to use stalling-based rewards.
+            destination (int): Index of the delivery point (0~3).
         """
         super(TUeMapEnv, self).__init__()
         self.width, self.height = WIDTH, HEIGHT
@@ -319,8 +320,7 @@ class TUeMapEnv(gym.Env):
 
     def plot_map_with_path(self, path: Optional[list] = None, is_training: bool = False):
         """
-        Visualize the TUe map, path, and delivery point using matplotlib.
-        Matplotlib is of higher resolution in comparison to pygame.
+        Visualize the TU/e map, agent path, and delivery point using matplotlib.
         """
         # Skip plotting during training to improve performance
         if is_training:

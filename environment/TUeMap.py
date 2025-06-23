@@ -4,17 +4,16 @@ import osmnx as ox
 import numpy as np
 
 
-CENTER = (51.447892, 5.486253)  # Latitude and longitude of TUe
-RADIUS = 180                    # Radius in meters to fetch the map
-WIDTH, HEIGHT = 400, 300
-BG_COLOR = (245, 245, 228)      # Background color of the map
-#BUILDING_COLOR = (80, 80, 80)   # Color for buildings
-BUILDING_COLOR = (217, 208, 202)
-BUILDING_BORDER_COLOR = (200, 187, 173)
-ROAD_COLOR = (255, 255, 255)        # Color for roads
+CENTER = (51.447892, 5.486253)            # Latitude and longitude of TUe
+RADIUS = 180                              # Radius in meters to fetch the map
+WIDTH, HEIGHT = 400, 300                  # Size of the map in pixels
+BG_COLOR = (245, 245, 228)                # Background color of the map
+BUILDING_COLOR = (217, 208, 202)          # Color for buildings
+BUILDING_BORDER_COLOR = (200, 187, 173)   # Color for building borders
+ROAD_COLOR = (255, 255, 255)              # Color for roads
 ROAD_BORDER_COLOR = (220, 220, 220)       # Color for road borders
-ROAD_WIDTH = 8
-ROAD_EDGES = [                  # Extra predefined road to draw
+ROAD_WIDTH = 8                            # Width of the road lines in pixels
+ROAD_EDGES = [                            # Extra predefined road to draw
     [(164, 82), (164, 217)],
     [(276, 71), (276, 83)],
     [(90, 84), (90, 214)],
@@ -35,7 +34,7 @@ class Buildings:
 
 def draw_TUe_map(screen: pygame.Surface):
     """
-    Draws a schematic map of the TUe area.
+    Draws a schematic map of TU/e campus around MetaForum.
     OSMnx fetches map elements, and pygame renders all of them.
     """
     # Get buildings and roads
