@@ -139,7 +139,7 @@ def run_dqn_experiment(
     lr: float = 0.0005,
     detect_range: int = 4,
     episodes: int = 500,
-    max_steps: int = 500,
+    max_steps: int = 200,
     seed: int = 42,
     name: str = "dqn",
     **kwargs

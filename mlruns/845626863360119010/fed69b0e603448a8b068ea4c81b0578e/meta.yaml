@@ -1,0 +1,14 @@
+artifact_uri: file:///C:/Users/20210894/OneDrive%20-%20TU%20Eindhoven/Documents/Year%201%20Master/Q4/2AMC15-group-2/mlruns/845626863360119010/fed69b0e603448a8b068ea4c81b0578e/artifacts
+end_time: 1750790640955
+entry_point_name: ''
+experiment_id: '845626863360119010'
+lifecycle_stage: active
+run_id: fed69b0e603448a8b068ea4c81b0578e
+run_name: location_easy_location_lr=0.0005_bs=32_eps=500_det=4_feat=dist_dest=0_0624_2041
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1750790488762
+status: 3
+tags: []
+user_id: '20210894'

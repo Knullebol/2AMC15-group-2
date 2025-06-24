@@ -1,0 +1,10 @@
+artifact_location: file:///C:/Users/20210894/OneDrive%20-%20TU%20Eindhoven/Documents/Year%201%20Master/Q4/2AMC15-group-2/mlruns/845626863360119010/models/m-101956cdba584d7a99162dc7928a2aec/artifacts
+creation_timestamp: 1750791874495
+experiment_id: '845626863360119010'
+last_updated_timestamp: 1750791883822
+model_id: m-101956cdba584d7a99162dc7928a2aec
+model_type: null
+name: model
+source_run_id: 7792ad08023c434cbb1422db2f000c9e
+status: 2
+status_message: null
