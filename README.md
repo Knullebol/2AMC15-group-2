@@ -18,7 +18,7 @@ Additional input parameters:
 The hyperparameters of the agent can be found and changed in the `dqn` directory.
 
 
-### Dueling DQN Agent
+### Dueling Double DQN Agent
 
 The DQN Agent can be trained and run by navigating to the root directory of the project, and within a terminal running `python "train_dueling_double_dqn.py" --episodes (number of episodes) --steps (number of iterations per episode)`
 
