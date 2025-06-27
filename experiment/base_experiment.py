@@ -76,6 +76,7 @@ class ExperimentMetrics:
     num_goals: int = 0
     goal_rate: float = 0.0
     avg_steps_to_goal: float = 0.0
+    final_avg_steps_to_goal: float = 0.0
     best_steps_to_goal: Optional[int] = None
 
     # Training metrics
@@ -295,6 +296,7 @@ class BaseExperiment(ABC):
         best_path = None
         convergence_window = []
         convergence_threshold = 0.05  # 5% improvement threshold
+        steps_to_goal_list = []  # Track steps for each successful episode
 
         # Epsilon decay setup
         eps = self.config.epsilon_init
@@ -328,6 +330,7 @@ class BaseExperiment(ABC):
 
                 if terminated:
                     self.metrics.num_goals += 1
+                    steps_to_goal_list.append(steps_taken)
                     if self.metrics.best_steps_to_goal is None or steps_taken < self.metrics.best_steps_to_goal:
                         self.metrics.best_steps_to_goal = steps_taken
                         best_path = getattr(env, 'path', None)
@@ -389,6 +392,9 @@ class BaseExperiment(ABC):
             (count / total_actions * 100) if total_actions > 0 else 0
             for count in action_counts
         ]
+        
+        # Store steps to goal for final metrics calculation
+        self.steps_to_goal_list = steps_to_goal_list
 
     def _calculate_final_metrics(self):
         if not self.rewards_history:
@@ -408,8 +414,13 @@ class BaseExperiment(ABC):
         if self.config.episodes > 0:
             self.metrics.goal_rate = self.metrics.num_goals / self.config.episodes
 
-        if self.metrics.num_goals > 0:
-            self.metrics.avg_steps_to_goal = self.metrics.total_steps / self.metrics.num_goals
+        if self.metrics.num_goals > 0 and hasattr(self, 'steps_to_goal_list'):
+            self.metrics.avg_steps_to_goal = float(np.mean(self.steps_to_goal_list))
+            
+            # Final average steps to goal (last 10% of successful episodes)
+            if len(self.steps_to_goal_list) > 0:
+                final_count = max(1, int(len(self.steps_to_goal_list) * 0.1))
+                self.metrics.final_avg_steps_to_goal = float(np.mean(self.steps_to_goal_list[-final_count:]))
 
         # Learning stability
         if len(rewards) > 1:
@@ -441,7 +452,9 @@ class BaseExperiment(ABC):
         for key, value in final_metrics.items():
             if isinstance(value, (int, float)):
                 try:
-                    mlflow.log_metric(f"final_{key}", value)
+                    # Avoid double "final_" prefix for metrics already starting with "final_"
+                    metric_name = key if key.startswith('final_') else f"final_{key}"
+                    mlflow.log_metric(metric_name, value)
                 except Exception as e:
                     self.logger.warning(f"Could not log metric {key}: {e}")
 
@@ -507,6 +520,7 @@ class BaseExperiment(ABC):
         print(f"  Goals Reached: {self.metrics.num_goals}/{self.config.episodes} ({self.metrics.goal_rate:.1%})")
         if self.metrics.num_goals > 0:
             print(f"  Avg Steps to Goal: {self.metrics.avg_steps_to_goal:.1f}")
+            print(f"  Final Avg Steps to Goal: {self.metrics.final_avg_steps_to_goal:.1f}")
             print(f"  Best Steps to Goal: {self.metrics.best_steps_to_goal}")
         print(f"\nTraining Info:")
         print(f"  Total Steps: {self.metrics.total_steps}")
