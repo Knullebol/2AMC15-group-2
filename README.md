@@ -9,10 +9,9 @@ The DQN Agent can be trained and run by navigating to the root directory of the 
 Additional input parameters: 
 - `--logs` : If used the agent will print logs and create plots at the end of training
 - `--random_seed (int)` : Random seed value for the environment
-- `--location (int)` : Target building to deliver to. 0=Easy, 1=Markthal, 2=Auditorium, 3=Nexus
+- `--destination (int)` : Target building to deliver to. 0=Easy, 1=Markthal, 2=Auditorium, 3=Nexus
 - `--use_distance` : If used, enables distance based rewards
 - `--use_direction` : If used, enables direction based rewards
-- `--use_distance` : If used, enables distance based rewards
 - `--use_stalling` : If used, enables passive punishments for staying in one area for too long
 
 The hyperparameters of the agent can be found and changed in the `dqn` directory.
@@ -25,10 +24,9 @@ The DQN Agent can be trained and run by navigating to the root directory of the 
 Additional input parameters: 
 - `--logs` : If used the agent will print logs and create plots at the end of training
 - `--random_seed (int)` : Random seed value for the environment
-- `--location (int)` : Target building to deliver to. 0=Easy, 1=Markthal, 2=Auditorium, 3=Nexus
+- `--destination (int)` : Target building to deliver to. 0=Easy, 1=Markthal, 2=Auditorium, 3=Nexus
 - `--use_distance` : If used, enables distance based rewards
 - `--use_direction` : If used, enables direction based rewards
-- `--use_distance` : If used, enables distance based rewards
 - `--use_stalling` : If used, enables passive punishments for staying in one area for too long
 
 The hyperparameters of the agent can be found and under the `dueling_dqn` directory.
