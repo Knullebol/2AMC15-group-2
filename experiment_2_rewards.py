@@ -14,7 +14,7 @@ def run_reward_experiments(agent_type):
         'episodes': 500,
         'max_steps': 200,
         'batch_size': 32,
-        'memory_size': 10000,
+        'memory_size': 20000,
         'lr': 0.0005,
         'detect_range': 4,
         'destination': 2,
