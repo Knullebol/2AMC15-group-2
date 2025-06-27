@@ -1,6 +1,6 @@
 ## Group 2 - Assignment 2
 
-First A2 commit was on the 3rd of June. 
+The first A2 commit was on the 3rd of June, by Knullebol
 
 
 ### DQN Agent 
@@ -36,8 +36,8 @@ The hyperparameters of the agent can be found and under the `dueling_dqn` direct
 
 In order to replicate the results of the experiments, three files were created. 
 
-By running `python :experiment_1_hyperparams.py" --agent_type (dqn / dueling_dqn)`, the experiments on the hyperparameters can be done.
-By running `python :experiment_1_rewards.py" --agent_type (dqn / dueling_dqn)`, the experiments on the different rewards systems can be done.
-By running `python :experiment_1_locations.py" --agent_type (dqn / dueling_dqn)`, the experiments on the different locations can be done.
+By running `python "experiment_1_hyperparams.py" --agent_type [dqn / dueling_dqn]`, the experiments on the hyperparameters can be replicated.
+By running `python "experiment_2_rewards.py" --agent_type [dqn / dueling_dqn]`, the experiments on the different rewards systems can be replicated.
+By running `python "experiment_3_locations.py" --agent_type [dqn / dueling_dqn]`, the experiments on the different locations can be replicated.
 
-These experiments support the use of MLflow (https://mlflow.org/). By running `mlflow ui` in a different terminal, the full experiment setup can be accessed. In the case that the experiments fail due to a faulty URI, simply removing the 'mlruns' directory inside the project and rerunning should fix the issue. 
+These experiments support the use of MLflow (https://mlflow.org/). By running `mlflow ui` in a different terminal, the full experiment setup can be accessed. In the case that the experiments fail due to a faulty URI, simply removing the `mlruns` directory inside the project and rerunning should fix the issue. 
