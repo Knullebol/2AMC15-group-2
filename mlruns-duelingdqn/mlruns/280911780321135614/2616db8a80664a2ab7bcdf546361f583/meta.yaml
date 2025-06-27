@@ -1,0 +1,14 @@
+artifact_uri: file:///C:/Users/MEPET1/DIC-personal-repo/mlruns/280911780321135614/2616db8a80664a2ab7bcdf546361f583/artifacts
+end_time: 1750842118862
+entry_point_name: ''
+experiment_id: '280911780321135614'
+lifecycle_stage: active
+run_id: 2616db8a80664a2ab7bcdf546361f583
+run_name: dudqn_distance_nexus_mem20000_lr=0.0005_bs=32_eps=500_det=4_feat=dist_dest=3_0625_1100
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1750842051180
+status: 3
+tags: []
+user_id: MEPET1

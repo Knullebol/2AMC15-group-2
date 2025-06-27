@@ -1,0 +1,14 @@
+artifact_uri: file:///C:/Users/MEPET1/DIC-personal-repo/mlruns/280911780321135614/5fc2df63a6eb4a258538c521d7be28bb/artifacts
+end_time: 1750841738722
+entry_point_name: ''
+experiment_id: '280911780321135614'
+lifecycle_stage: active
+run_id: 5fc2df63a6eb4a258538c521d7be28bb
+run_name: dudqn_direction_auditorium_mem20000_lr=0.0005_bs=32_eps=500_det=4_feat=dir_dest=2_0625_1054
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1750841671817
+status: 3
+tags: []
+user_id: MEPET1

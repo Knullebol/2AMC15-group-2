@@ -1,0 +1,14 @@
+artifact_uri: file:///C:/Users/MEPET1/DIC-personal-repo/mlruns/280911780321135614/35aef352aa8041eb85e1cb9e1c0d1346/artifacts
+end_time: 1750841399051
+entry_point_name: ''
+experiment_id: '280911780321135614'
+lifecycle_stage: active
+run_id: 35aef352aa8041eb85e1cb9e1c0d1346
+run_name: dudqn_stalling_markthal_mem10000_lr=0.0005_bs=32_eps=500_det=4_feat=stall_0625_1048
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1750841331441
+status: 3
+tags: []
+user_id: MEPET1
